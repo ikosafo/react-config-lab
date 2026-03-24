@@ -7,7 +7,7 @@ function Dashboard() {
 
     <div style={{ padding: 30 }}>
 
-      <h1>Configuration Dashboard</h1>
+      <h1>Hello from my local machine</h1>
 
       <ConfigViewer />
 
