@@ -1,0 +1,47 @@
+
+## Task 1: Complete List of Environment Variables
+
+All environment Variables are read directly from ".env" files into "appConfig.js", which is then imported 
+
+| Variables | Purpose | Files using it |
+|-----------|---------|----------------|
+| 'REACT_APP_ENV' | Current environment (development, staging, production) | appConfig.js-configViewer |
+| 'REACT_APP_API_URL' | Base URL for API requests | appConfig.js, apiService.js |
+| 'REACT_APP_APP_NAME' | Application displays name | appConfig.js - configViewer, EnvironmentBanner |
+| 'REACT_APP_LOG_LEVEL' | Logging level for debugging (error, warn, info) | appConfig.js, logger.js |
+| 'REACT_APP_ENABLE_ANALYTICS' | Toggle analytics feature (True/false) |appConfig.js - configViewer |
+
+** Reading Methods:**  All variables are read directly from "process.env. * in [src/config/app.config.js]
+
+## Task 2: .env.example 
+
+** Location:** [.env.example](.env.example)
+
+The template files includes:
+- Clear instructions at the top for new developers 
+- All 5 environment variables with safe/fake example values
+- Explanatory comment describing each variable and which files use it 
+- Instructions to copy to '.en.local' and update for personal setup 
+
+## Task 3: Environment Files setup 
+
+- Three environment files has been created 
+
+### 1. '.env.local' (personal setting)
+**Purpose:** Your personal local development 
+
+### 2. '.env.production' (team default for local work)
+**Purpose:** Default settings for local development that all team members can use without modification. This file is committed to version control.
+
+### 3. '.env.development' (teams default for builds)
+**Purpose:** Default settings for development builds (e.g., staging environment). This file is also committed to version control.
+
+**Note:** Both '.env.production' and '.env.development' contain the same default values for local development, ensuring consistency across the team. Developers can override these defaults in their personal '.env.local' file as needed.
+
+## Task 3b: Put the same variable in two different files with the different values (e.g. change Api url)
+- 'REACT_APP_API_URL' is set to 'http://localhost:3000/api' in '.env.local' for local development, allowing developers to connect to a local backend server.
+- In '.env.production', 'REACT_APP_API_URL' is set to 'https://api.example.com', which points to the production API endpoint used for staging and production builds.
+This setup allows developers to easily switch between local and production API endpoints without modifying the code, simply by using the appropriate environment file for their current development or build needs.
+
+
+
