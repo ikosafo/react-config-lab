@@ -1,0 +1,144 @@
+# Environment Variables Setup Summary
+
+## Task 1: Complete List of Environment Variables ✅
+
+All environment variables are read directly from `.env*` files into `appConfig.js`, which is then imported by other components.
+
+| Variable | Purpose | Files Using It |
+|----------|---------|-----------------|
+| `REACT_APP_ENV` | Current environment (development, staging, production) | appConfig.js → ConfigViewer, EnvironmentBanner, logger, apiService |
+| `REACT_APP_API_URL` | Backend API endpoint URL | appConfig.js → apiService |
+| `REACT_APP_APP_NAME` | Application display name | appConfig.js → ConfigViewer, EnvironmentBanner |
+| `REACT_APP_LOG_LEVEL` | Console logging level (debug, info, warn, error) | appConfig.js → logger |
+| `REACT_APP_ENABLE_ANALYTICS` | Toggle analytics feature (true/false) | appConfig.js → ConfigViewer |
+
+**Reading Method:** All variables are read directly from `process.env.*` in [src/config/appConfig.js](src/config/appConfig.js), then exported as a config object.
+
+---
+
+## Task 2: .env.example File ✅
+
+**Location:** [.env.example](.env.example)
+
+The template file includes:
+- Clear instructions at the top for new developers
+- All 5 environment variables with safe/fake example values
+- Explanatory comments describing each variable and which files use it
+- Instructions to copy to `.env.local` and update for personal setup
+
+---
+
+## Task 3: Environment Files Setup ✅
+
+Three environment files have been created/updated in the root directory:
+
+### 1. `.env.local` (Personal Settings)
+- **Purpose:** Your personal local development overrides
+- **Not committed:** Listed in `.gitignore` to prevent accidental commits
+- **Highest priority:** Overrides `.env.development`
+- **Example values:**
+  ```
+  REACT_APP_ENV=development
+  REACT_APP_API_URL=http://localhost:5000
+  REACT_APP_APP_NAME=React Config Lab (Local)
+  REACT_APP_LOG_LEVEL=debug
+  REACT_APP_ENABLE_ANALYTICS=false
+  ```
+
+### 2. `.env.development` (Team Defaults)
+- **Purpose:** Shared defaults for development team
+- **Used by:** `npm start` (development mode)
+- **Example values:**
+  ```
+  REACT_APP_ENV=development
+  REACT_APP_API_URL=https://dev-api.team-shared.com
+  REACT_APP_APP_NAME=React Config Lab (Dev)
+  REACT_APP_LOG_LEVEL=debug
+  REACT_APP_ENABLE_ANALYTICS=true
+  ```
+
+### 3. `.env.production` (Production Defaults)
+- **Purpose:** Defaults for production builds
+- **Used by:** `npm run build`
+- **Example values:**
+  ```
+  REACT_APP_ENV=production
+  REACT_APP_API_URL=https://api.production-site.com
+  REACT_APP_APP_NAME=React Config Lab
+  REACT_APP_LOG_LEVEL=error
+  REACT_APP_ENABLE_ANALYTICS=true
+  ```
+
+---
+
+## How React Script Loads Environment Variables
+
+Create React App (react-scripts) loads environment files in this priority order:
+
+1. **`.env.local`** — Highest priority, overrides all others (never committed)
+2. **`.env.[NODE_ENV].local`** — e.g., `.env.development.local` (never committed)
+3. **`.env.[NODE_ENV]`** — e.g., `.env.development`
+4. **`.env`** — Lowest priority defaults
+
+---
+
+## Testing the Override Behavior
+
+### Test 1: With `.env.local` Present
+```bash
+npm start
+```
+**Expected Result:** `.env.local` values win
+- `REACT_APP_API_URL` should show `http://localhost:5000`
+- `REACT_APP_APP_NAME` should show `React Config Lab (Local)`
+- `REACT_APP_LOG_LEVEL` should be `debug`
+
+### Test 2: Without `.env.local` (Rename or Delete It)
+```bash
+# Rename it temporarily
+mv .env.local .env.local.bak
+
+npm start
+```
+**Expected Result:** `.env.development` values are now active
+- `REACT_APP_API_URL` should show `https://dev-api.team-shared.com`
+- `REACT_APP_APP_NAME` should show `React Config Lab (Dev)`
+- `REACT_APP_LOG_LEVEL` should be `debug`
+- `REACT_APP_ENABLE_ANALYTICS` should be `true`
+
+### Test 3: Production Build
+```bash
+npm run build
+```
+**Expected Result:** Uses `.env.production` values (unless `.env.local` or `.env.production.local` exist)
+- `REACT_APP_ENV` becomes `production`
+- `REACT_APP_API_URL` points to `https://api.production-site.com`
+- `REACT_APP_LOG_LEVEL` becomes `error`
+
+---
+
+## Key Configuration Files
+
+- [appConfig.js](src/config/appConfig.js) — Reads environment variables and exports config object
+- [ConfigViewer.js](src/components/ConfigViewer.js) — Displays current config values
+- [EnvironmentBanner.js](src/components/EnvironmentBanner.js) — Shows environment badge
+- [logger.js](src/utils/logger.js) — Uses log level from config
+- [apiService.js](src/services/apiService.js) — Uses API URL from config
+
+---
+
+## Best Practices
+
+✅ **DO:**
+- Use `.env.local` for personal/machine-specific settings
+- Keep `.env.development` for team-shared development defaults
+- Keep `.env.production` for production build settings
+- Never commit `.env.local` (it's in `.gitignore`)
+- Use `.env.example` as the template for new developers
+- Always use the same variable names across all `.env` files
+
+❌ **DON'T:**
+- Put real API keys or passwords in `.env.production` (use secrets management)
+- Commit `.env.local` to version control
+- Mix variable names (e.g., `REACT_APP_NAME` vs `REACT_APP_APP_NAME`)
+- Remove common variables from any `.env` file

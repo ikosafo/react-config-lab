@@ -5,8 +5,9 @@ import EnvironmentBanner from "./components/EnvironmentBanner";
 function App() {
 
   return (
-
     <div>
+    <hi> Hello from my local machine! My name is Fafa  </hi>
+
 
       <EnvironmentBanner />
 
