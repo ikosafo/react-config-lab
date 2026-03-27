@@ -68,3 +68,40 @@ This section has moved here: [https://facebook.github.io/create-react-app/docs/d
 ### `npm run build` fails to minify
 
 This section has moved here: [https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify](https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify)
+
+## Configuration Guide
+
+This guide helps you set up environment variables for the React Config Lab in 5 minutes.
+
+### Main Environment Variables
+
+| Variable | What it does | Required? |
+|----------|--------------|-----------|
+| `REACT_APP_ENV` | Sets the current environment (development/staging/production) | Yes |
+| `REACT_APP_API_URL` | Backend API endpoint URL for data fetching | Yes |
+| `REACT_APP_APP_NAME` | Display name shown in the app header | No (defaults to "React Config Lab") |
+| `REACT_APP_LOG_LEVEL` | Console logging level (debug/info/warn/error) | No (defaults to "info") |
+| `REACT_APP_ENABLE_ANALYTICS` | Toggle analytics tracking on/off | No (defaults to false) |
+
+### Setting Up Your Own .env.local
+
+1. Copy the template file: `cp .env.example .env.local`
+2. Edit `.env.local` with your personal settings (e.g., local API URL)
+3. Restart your dev server: `npm start`
+
+Example `.env.local`:
+```
+REACT_APP_ENV=development
+REACT_APP_API_URL=http://localhost:5000
+REACT_APP_APP_NAME=React Config Lab (Local)
+REACT_APP_LOG_LEVEL=debug
+REACT_APP_ENABLE_ANALYTICS=false
+```
+
+### Quick Way to See Current Config in Dev
+
+Open your browser's developer console (F12) when running `npm start`. You'll see a collapsed group "appConfig is in development mode" showing all current config values.
+
+### Important Tip
+
+Never commit real secrets or personal config to git! `.env.local` is ignored by git, while `.env.example` contains safe template values for others to copy.

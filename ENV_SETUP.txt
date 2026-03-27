@@ -13,7 +13,6 @@ All environment variables are read directly from ".env* files into "appConfig.js
 
 **Reading Method:** All variables are read directly from `process.env.*` in [src/config/appConfig.js](src/config/appConfig.js), then exported as a config object.
 
----
 
 ## Task 2: .env.example File 
 
@@ -75,7 +74,26 @@ Create React App (react-scripts) loads environment files in this priority order:
 2. When **`.env.local`** file is commented out/renamed/removed, then **`.env.development`** the becomes the next highest pr
 
 
+---
 
+## Task 5: Spot Which Variables Are Really Important (Required)
+
+Goal: Prevent the app from starting with missing critical config.
+
+| Variable | Required? | Reasoning | Safe Default |
+|----------|-----------|-----------|--------------|
+| `REACT_APP_ENV` | **REQUIRED** | Core identifier for what environment we're in. Used by multiple components to determine behavior. Missing this is a setup error. | None — must be explicit |
+| `REACT_APP_API_URL` | **REQUIRED** | Critical for `apiService.js` — without it, axios gets `undefined` as baseURL and all API calls fail. App cannot function. | None — must be explicit |
+| `REACT_APP_APP_NAME` | **OPTIONAL** | Used only for display in UI. App works fine if missing. | Default: `"React Config Lab"` |
+| `REACT_APP_LOG_LEVEL` | **OPTIONAL** | Used by logger to filter messages. If missing, defaults to showing all logs. | Default: `"info"` |
+| `REACT_APP_ENABLE_ANALYTICS` | **OPTIONAL** | Toggle feature only. Safely defaults to `false` if missing. | Default: `false` |
+
+**Helpful Error Messages for Required Variables:**
+
+- **REACT_APP_ENV**: `" required: environment variable: REACT_APP_ENV."`
+- **REACT_APP_API_URL**: `"required environment variable: REACT_APP_API_URL."`
+
+---
 
 
 
