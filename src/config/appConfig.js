@@ -5,7 +5,7 @@
 const isDevelopment = process.env.REACT_APP_ENV === "development";
 
 const appConfig = {
-  //environment: process.env.REACT_APP_ENV,
+  environment: process.env.REACT_APP_ENV,
   apiUrl: process.env.REACT_APP_API_URL,
   appName: process.env.REACT_APP_APP_NAME,
   logLevel: process.env.REACT_APP_LOG_LEVEL,
