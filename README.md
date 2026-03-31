@@ -69,28 +69,32 @@ This section has moved here: [https://facebook.github.io/create-react-app/docs/d
 
 This section has moved here: [https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify](https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify)
 
-## Configuration Guide
+## How to use our config
 
-This guide helps you set up environment variables for the React Config Lab in 5 minutes.
+This guide helps you understand the config quickly and make your own local settings.
 
 ### Main Environment Variables
 
 | Variable | What it does | Required? |
 |----------|--------------|-----------|
-| `REACT_APP_ENV` | Sets the current environment (development/staging/production) | Yes |
-| `REACT_APP_API_URL` | Backend API endpoint URL for data fetching | Yes |
-| `REACT_APP_APP_NAME` | Display name shown in the app header | No (defaults to "React Config Lab") |
-| `REACT_APP_LOG_LEVEL` | Console logging level (debug/info/warn/error) | No (defaults to "info") |
-| `REACT_APP_ENABLE_ANALYTICS` | Toggle analytics tracking on/off | No (defaults to false) |
+| `REACT_APP_ENV` | Sets the current app environment (`development`, `staging`, `production`) | Yes |
+| `REACT_APP_API_URL` | URL for the backend API the app talks to | Yes |
+| `REACT_APP_APP_NAME` | App display name shown in the UI | No (defaults to `React Config Lab`) |
+| `REACT_APP_LOG_LEVEL` | Logging verbosity for the app | No (defaults to `info`) |
+| `REACT_APP_ENABLE_ANALYTICS` | Turns analytics tracking on when `true` | No (defaults to `false`) |
 
-### Setting Up Your Own .env.local
+### How to make your own `.env.local`
 
-1. Copy the template file: `cp .env.example .env.local`
-2. Edit `.env.local` with your personal settings (e.g., local API URL)
-3. Restart your dev server: `npm start`
+1. Copy the example file:
+   - macOS / Linux: `cp .env.example .env.local`
+   - Windows PowerShell: `Copy-Item .env.example .env.local`
+   - Windows CMD: `copy .env.example .env.local`
+2. Edit `.env.local` and set your own values.
+3. Restart the dev server: `npm start`
 
 Example `.env.local`:
-```
+
+```env
 REACT_APP_ENV=development
 REACT_APP_API_URL=http://localhost:5000
 REACT_APP_APP_NAME=React Config Lab (Local)
@@ -98,10 +102,12 @@ REACT_APP_LOG_LEVEL=debug
 REACT_APP_ENABLE_ANALYTICS=false
 ```
 
-### Quick Way to See Current Config in Dev
+### Quick way to see the current config in dev
 
-Open your browser's developer console (F12) when running `npm start`. You'll see a collapsed group "appConfig is in development mode" showing all current config values.
+Run `npm start`, open the browser developer console (F12), and look for the config log from `src/config/appConfig.js`.
 
-### Important Tip
+If required variables are missing, the app shows a browser-visible configuration error screen instead of crashing silently.
 
-Never commit real secrets or personal config to git! `.env.local` is ignored by git, while `.env.example` contains safe template values for others to copy.
+### One important tip
+
+Do not commit real secrets or private values to git. Use `.env.local` for local overrides, and keep `.env.example` as a safe template that others can copy.
