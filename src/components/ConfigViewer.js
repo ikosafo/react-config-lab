@@ -3,6 +3,10 @@ import config from "../config/appConfig";
 
 function ConfigViewer() {
 
+  // if (!isDevelopment) {
+  //   return null;   
+  // }
+
   return (
     <div>
 

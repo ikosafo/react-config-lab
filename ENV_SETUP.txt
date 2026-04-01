@@ -142,3 +142,8 @@ npm run build
 - Commit `.env.local` to version control
 - Mix variable names (e.g., `REACT_APP_NAME` vs `REACT_APP_APP_NAME`)
 - Remove common variables from any `.env` file
+
+
+
+
+

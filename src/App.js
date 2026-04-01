@@ -6,7 +6,7 @@ function App() {
 
   return (
     <div>
-    <hi> Hello from my local machine! My name is Fafa  </hi>
+    <h1> Hello from my local machine! My name is Fafa  </h1>
 
 
       <EnvironmentBanner />
