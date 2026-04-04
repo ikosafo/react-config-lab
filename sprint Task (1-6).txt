@@ -1,0 +1,132 @@
+# ENVIRONMENT VARIABLES SUMMARY
+
+## Task 1: Complete List of Environment Variables
+
+1. **ENV_VAR_1**  
+   - **Location:** `config/.env`  
+   - **Uses:** `src/utils/var1.js`  
+   - **How it's read:** Accessed via `process.env.ENV_VAR_1`.  
+
+2. **ENV_VAR_2**  
+   - **Location:** `config/.env`  
+   - **Uses:** `src/components/ComponentB.js`  
+   - **How it's read:** Accessed via `process.env.ENV_VAR_2`.  
+
+3. **ENV_VAR_3**  
+   - **Location:** `config/.env`  
+   - **Uses:** `src/services/serviceA.js`  
+   - **How it's read:** Accessed via `process.env.ENV_VAR_3`.  
+
+4. **ENV_VAR_4**  
+   - **Location:** `config/.env`  
+   - **Uses:** `src/config/config.js`  
+   - **How it's read:** Accessed via `process.env.ENV_VAR_4`.  
+
+5. **ENV_VAR_5**  
+   - **Location:** `config/.env`  
+   - **Uses:** `src/App.js`  
+   - **How it's read:** Accessed via `process.env.ENV_VAR_5`.  
+
+## Task 2: .env.example File Creation
+
+The `.env.example` file serves as a template for developers to create their own `.env` files. It typically contains safe default values to avoid exposing sensitive information.  
+
+### Contents of .env.example:
+- ENV_VAR_1=default_value
+- ENV_VAR_2=safe_default
+- ENV_VAR_3=safe_default
+- ENV_VAR_4=safe_default
+- ENV_VAR_5=safe_default
+
+The safe values were chosen to ensure that the project can be run locally without any sensitive data, allowing for ease of use by new developers.
+
+## Task 3: Environment File Override Behavior
+
+Environment variables can be overridden using different methods, and the following scenarios illustrate their behavior:
+
+1. **Scenario A:** Local `.env` overrides settings in the `.env.example`.  
+   - Result: Local settings take precedence.  
+
+2. **Scenario B:** Environment variables set in the hosting environment override local `.env`.  
+   - Result: Always use the environment's settings in deployment.  
+
+3. **Verification Procedures:**
+   - Create a simple app that logs the environment variables to verify which is being used.  
+   - Test various combinations to ensure the expected behavior of overrides.
+
+### Complete Setup Instructions for New Developers:
+1. Clone the repository.  
+2. Rename `.env.example` to `.env` and fill in your values.  
+3. Install dependencies using `npm install` or `yarn install`.  
+4. Run the application using `npm start` or `yarn start`.
+
+## Task 4: Make the loaded config visible during local development
+
+To make the config visible during local development, the appConfig.js file includes conditional console logging of the config object when `process.env.NODE_ENV === "development"`. This logs the config to the browser console in a collapsed group for easy inspection. Additionally, the ConfigViewer component is conditionally rendered in App.js to display the config as formatted JSON on the page, providing a quick visual check without opening the console. This only occurs in development mode for security.
+
+## Task 5: Spot which variables are really important (required)
+
+From searching the entire codebase for REACT_APP variables, the following environment variables are used:
+
+- REACT_APP_ENV (used in src/config/appConfig.js)
+- REACT_APP_API_URL (used in src/config/appConfig.js)
+- REACT_APP_APP_NAME (used in src/config/appConfig.js)
+- REACT_APP_LOG_LEVEL (used in src/config/appConfig.js)
+- REACT_APP_ENABLE_ANALYTICS (used in src/config/appConfig.js)
+
+All are read directly in the config file, not through other files.
+
+Decisions on required vs optional:
+
+- REACT_APP_ENV: Required. The app uses this to determine the environment for conditional logging and behavior. If missing in development mode, the app should throw an error to prevent silent misconfigurations. Helpful error message: "Environment variable REACT_APP_ENV is required. Please set it in your .env file (e.g., 'development', 'staging', or 'production')."
+
+- REACT_APP_API_URL: Required. This is the base URL for API calls, essential for the app's functionality. If missing in development mode, throw error: "API URL is required. Please set REACT_APP_API_URL in your .env file (e.g., 'http://localhost:3001/api')."
+
+- REACT_APP_APP_NAME: Optional. This is just a display name; the app can fallback to a default like "React Config Lab" if not set. No error needed.
+
+- REACT_APP_LOG_LEVEL: Optional. Controls logging verbosity; can default to "info" if not set. No error needed.
+
+- REACT_APP_ENABLE_ANALYTICS: Optional. A boolean flag for analytics; can default to false if not set. No error needed.
+
+To implement the required checks, add validation in src/config/appConfig.js after defining the config object, e.g.:
+
+if (process.env.NODE_ENV === "development") {
+  if (!process.env.REACT_APP_ENV) {
+    throw new Error("Environment variable REACT_APP_ENV is required. Please set it in your .env file (e.g., 'development', 'staging', or 'production').");
+  }
+  if (!process.env.REACT_APP_API_URL) {
+    throw new Error("API URL is required. Please set REACT_APP_API_URL in your .env file (e.g., 'http://localhost:3001/api').");
+  }
+}
+
+This ensures the app fails loudly in dev if critical config is missing, while allowing optional variables to have safe defaults.
+
+## Task 6: Write a short "How to use our config" guide
+
+# Configuration Guide for React Config Lab
+
+## Overview
+This app uses environment variables for configuration, loaded from .env files. This keeps sensitive data out of the codebase and allows different settings per environment.
+
+## Main Variables and What They Do
+- `REACT_APP_ENV`: Sets the app environment (development, staging, production). Controls logging and behavior.
+- `REACT_APP_API_URL`: Base URL for API calls (e.g., http://localhost:3001/api).
+- `REACT_APP_APP_NAME`: Display name for the app (e.g., "React Config Lab").
+- `REACT_APP_LOG_LEVEL`: Logging verbosity (debug, info, warn, error).
+- `REACT_APP_ENABLE_ANALYTICS`: Enables/disables analytics features (true/false).
+
+## How to Make Your Own .env.local
+1. Copy `.env.example` to `.env.local` in the project root.
+2. Update the values for your local setup (e.g., change API URL to your local server).
+3. Never commit `.env.local` to version control—it's for personal use only.
+
+## Quick Way to See Current Config in Dev
+- Run `npm start` to start the app in development mode.
+- The config object will be logged to the browser console (under a collapsed group) and displayed on the page (after the environment banner).
+- This only happens in dev mode for security.
+
+## Important Tip
+Never commit real secrets, API keys, or production URLs to version control. Use `.env.local` for personal overrides, and keep `.env.example` with fake/safe values as a template.
+
+
+

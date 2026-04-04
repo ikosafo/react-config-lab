@@ -1,20 +1,12 @@
-import appConfig from "./appConfig";
-
 const requiredVariables = [
   "environment",
-  "apiUrl",
-  "appName",
-  "logLevel"
+  "apiUrl"
 ];
 
-export const validateConfig = () => {
-
+export const validateConfig = (config) => {
   requiredVariables.forEach((key) => {
-
-    if (!appConfig[key]) {
+    if (!config[key]) {
       throw new Error(`Missing configuration variable: ${key}`);
     }
-
   });
-
 };
