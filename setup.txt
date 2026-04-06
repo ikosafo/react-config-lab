@@ -1,44 +1,218 @@
-## Task 1 : Complete list of environment variables
+# GAS PROJECT – CONFIGURATION TEAM  
+## Sprint 1 – Setup Guide
 
-All environment variables are read directly from '.env' files into 'appConfig.js' which is then imported
+---
 
-| Variables | Purpose | Files Using it |
-| 'React_App_Env' | Current Environment (Development, Staging, Production) appConfig.js ConfigViewer
-| 'React_App_Api_Url' | Base Url for Api requests | appConfig.js, ApiService.js |
-| 'React_App_App_Name' | Application Display Name | appConfig.js ConfigViewer EnvironmentBanner |
-| 'React_App_Log_Level' | Logging level for debugging (Error, Warn, Info) | appConfig.js, Logger.js |
-| 'React_App_Enable_Analytics' | Toggle Analytics features (True/False) | appConfig.js, ConfigViewer |
+## Task 1 : Complete List of Environment Variables
 
-** Reading Methods : ** All Variables are read directly from 'process.env' in [src/config/appConfig.js]
+All environment variables are read directly from '.env' files into `appConfig.js`, which is then imported wherever needed.
 
+| Variable | Purpose | Files Using It |
+|----------|---------|----------------|
+| REACT_APP_ENV | Current Environment (Development, Staging, Production) | appConfig.js, ConfigViewer |
+| REACT_APP_API_URL | Base URL for API requests | appConfig.js, ApiService.js |
+| REACT_APP_APP_NAME | Application Display Name | appConfig.js, ConfigViewer, EnvironmentBanner |
+| REACT_APP_LOG_LEVEL | Logging level for debugging (Error, Warn, Info) | appConfig.js, Logger.js |
+| REACT_APP_ENABLE_ANALYTICS | Toggle Analytics features (True/False) | appConfig.js, ConfigViewer |
 
+**Reading Methods:** All variables are read directly from `process.env` in `src/config/appConfig.js`.
 
-## Task 2 : .env.example 
+---
 
-** Location : ** [env.example] (.env.example)
+## Task 2 : .env.example
 
-* The template files include: Instructions at the top for new developers
-* List all five variables with safe/ fake example values
-* Give explanatory comments describing safe/fake example values
-* Instructions to copy to '.env.local' and update for personal setup
+**Location:** `.env.example` in the project root.  
 
+- Includes instructions at the top for new developers.  
+- Lists all five variables with safe/fake example values.  
+- Provides explanatory comments describing each variable.  
+- Instructs developers to copy the file to `.env.local` and update values for personal setup.  
 
-##Task 3 : Environment File Setup
+---
 
-Three environment files have been created
+## Task 3 : Environment File Setup
 
-### 1. '.env.local' (personal settings)
-** Purpose: ** Your personal local Development
+Three environment files have been created:
 
-### 2. '.env.production' (team defaults for local work)
-** Purpose: ** defaults settings for local development that all team members can use without modification
+1. **`.env.local` (personal settings)**  
+   - Purpose: Personal local development overrides.  
+2. **`.env.production` (team defaults for local work)**  
+   - Purpose: Defaults used for production builds or staging.  
+3. **`.env.development` (team defaults for development)**  
+   - Purpose: Defaults for local development shared across the team.  
 
-### 3. '.env.development' (defaults for builds)
-** Purpose: ** default settings for development builds (e.g. staging environments)
+**Note:**  
+- `.env.production` and `.env.development` contain the same defaults for consistency.  
+- Developers can override these defaults in their personal `.env.local` file.  
 
-** Note: ** Both '.env.production' and '.env.development' contains the same default values for local development, ensuring consistency across the team. Developers can override these defaults in their personal '.env.local' file as needed.
+**Example Scenario:**  
+- `REACT_APP_API_URL` is set to `http://localhost:3000/api` in `.env.local` for local development.  
+- The same variable is set to `https://api.example.com` in `.env.production` for production/staging.  
+- Switching environment files allows developers to easily switch between local and production API endpoints without modifying the code.  
 
-### Task 3b : Put the same variable in two different files with different values (example: change API URL).
-** 'React_App_Api_Url' is set to 'http://localhost:3000/api' in '.env.local' for development, allowing developers to connect to a local backend server.
-** In '.env.production' 'React_App_Api_Url' is set to 'https://api.example.com', which points to the production api endpoint used for staging and production builds
-This setup allows developers to easily switch between local and production api endpoints without modifying the code, simply by using the appropriate environment file for their current development or build needs.
+---
+
+## ## Task 4: Show config during development
+ 
+### 1. Decide where in the codes it makes sense to show the config
+
+The most logical place to show the config during development is in the 'appConfig.js' file itself. This file is responsible for reading and exporting all the environment variables, making it the ideal location to log the configuration settings when in development mode.   
+ 
+### 2. Show the config only in development
+
+To show the config only in development, you can use a conditional statement to check the value of 'process.env.REACT_APP_ENV'. If it is equal to 'development', you can log the configuration settings to the console. This ensures that the config is only displayed during development and not in production or staging environments.
+ 
+ 
+### 3. what condition can you check to know "this is development"
+
+You can check the value of 'process.env.REACT_APP_ENV === "development"' to determine if the application is running in development mode. If 'process.env.REACT_APP_ENV' is equal to 'development', it indicates that the app is running in development mode.
+ 
+## Task 5. Identify required vrs optional variable
+ 
+### 1. Identify which variable is required and which one is optional
+
+### REQUIRED VARIABLES 
+
+- 'REACT_APP_ENV' is a required variable as it determines the current environment and is essential for the app's configuration. 
+
+- 'REACT_APP_API_URL' is also required as it specifies the base URL for API requests, which is crucial for the app's functionality (needed to call backend).
+ 
+### To ensure that the required variables are always provided, you can add a validation check in the 'appConfig.js' file. If any of the required variables are missing throw an error or log a warning message to the console. This will make it clear to developers that they need to provide the necessary environment variables for the app to function correctly.
+
+❌ Missing required environment variable: REACT_APP_API_URL
+
+👉 Please add it to your .env.local file
+ 
+### OPTIONAL VARIABLES
+
+- 'REACT_APP_APP_NAME' is optional as it is used for display purposes and can have a default value if not provided.
+
+- 'REACT_APP_LOG_LEVEL' is optional as it is used for debugging purposes and can have a default value of 'info' if not provided.
+
+- 'REACT_APP_ENABLE_ANALYTICS' is optional as it is used to toggle the analytics feature and can default to 'false' if not provided.
+ 
+### Task 6. Configuration Guide
+
+# Main environment Variable  
+
+- `REACT_APP_ENV`: Specifies the current environment (e.g., development, staging, production).  
+
+- `REACT_APP_API_URL`: The base URL for API requests.
+
+- `REACT_APP_APP_NAME`: The name of the application, used for display purposes.
+
+- `REACT_APP_LOG_LEVEL`: The logging level for the application (e.g., debug, info, warn, error).
+
+- `REACT_APP_ENABLE_ANALYTICS`: A boolean flag to enable or disable analytics tracking.
+ 
+# Setup Instruction (.env.local)
+
+1. Open the root directory of your React project in a code editor or terminal.
+
+2. Create a new file named `.env.local` in the root directory of your project.
+
+3. Add the following environment variables to the `.env.local` file, replacing the values with your own configuration:
+ 
+```env
+
+# Environment variable to specify the current environment (e.g., development, staging, production)
+
+REACT_APP_ENV=development
+
+# API URL for development environment
+
+REACT_APP_API_URL=http://localhost:3000/api
+
+# Application name
+
+REACT_APP_APP_NAME=My React App
+
+# Logging level (e.g., debug, info, warn, error)
+
+REACT_APP_LOG_LEVEL=debug
+
+# Enable analytics tracking (true or false)
+
+REACT_APP_ENABLE_ANALYTICS=true
+
+```
+
+4. Save the `.env.local` file. The environment variables defined in this file will now be available in your React application through `process.env`.
+ 
+# Environment Files
+
+.env.local
+
+.env.development
+
+.env.production
+ 
+# viewing config in development 
+
+In development mode, you can view the configuration by checking the console output. The `appConfig` object is logged to the console when the application is running in development mode. To view it:
+
+1. Start your React application using `npm start` or `yarn start`.
+
+2. Open the browser's developer tools (usually by pressing F12 or right-clicking and selecting "Inspect").
+
+3. Navigate to the "Console" tab in the developer tools.
+ 
+# Important Notes
+
+- Do not commit the `.env.local` file to version control, as it may contain sensitive information. Use `.env.development` and `.env.production` for environment-specific configurations that can be committed.
+
+- Ensure that the environment variables are correctly defined in the `.env` files and that they are prefixed with `REACT_APP_` to be accessible in the React application.
+
+- Missing required variables will throw an error 
+
+- The configuration is loaded at build time, so changes to the `.env` files will require restarting the development server to take effect.
+
+ 
+create a new file call Config-guide.md and put codes belows 
+ 
+## Configuration Guide
+ 
+# Main environment Variable  
+- `REACT_APP_ENV`: Specifies the current environment (e.g., development, staging, production).  
+- `REACT_APP_API_URL`: The base URL for API requests.
+- `REACT_APP_APP_NAME`: The name of the application, used for display purposes.
+- `REACT_APP_LOG_LEVEL`: The logging level for the application (e.g., debug, info, warn, error).
+- `REACT_APP_ENABLE_ANALYTICS`: A boolean flag to enable or disable analytics tracking.
+ 
+# Setup Instruction (.env.local)
+1. Open the root directory of your React project in a code editor or terminal.
+2. Create a new file named `.env.local` in the root directory of your project.
+3. Add the following environment variables to the `.env.local` file, replacing the values with your own configuration:
+ 
+```env
+# Environment variable to specify the current environment (e.g., development, staging, production)
+REACT_APP_ENV=development
+# API URL for development environment
+REACT_APP_API_URL=http://localhost:3000/api
+# Application name
+REACT_APP_APP_NAME=My React App
+# Logging level (e.g., debug, info, warn, error)
+REACT_APP_LOG_LEVEL=debug
+# Enable analytics tracking (true or false)
+REACT_APP_ENABLE_ANALYTICS=true
+```
+4. Save the `.env.local` file. The environment variables defined in this file will now be available in your React application through `process.env`.
+ 
+# Environment Files
+.env.local
+.env.development
+.env.production
+ 
+# viewing config in development
+In development mode, you can view the configuration by checking the console output. The `appConfig` object is logged to the console when the application is running in development mode. To view it:
+1. Start your React application using `npm start` or `yarn start`.
+2. Open the browser's developer tools (usually by pressing F12 or right-clicking and selecting "Inspect").
+3. Navigate to the "Console" tab in the developer tools.
+ 
+# Important Notes
+- Do not commit the `.env.local` file to version control, as it may contain sensitive information. Use `.env.development` and `.env.production` for environment-specific configurations that can be committed.
+- Ensure that the environment variables are correctly defined in the `.env` files and that they are prefixed with `REACT_APP_` to be accessible in the React application.
+- Missing required variables will throw an error
+- The configuration is loaded at build time, so changes to the `.env` files will require restarting the development server to take effect.
+ 
+ 

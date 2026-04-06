@@ -68,3 +68,97 @@ This section has moved here: [https://facebook.github.io/create-react-app/docs/d
 ### `npm run build` fails to minify
 
 This section has moved here: [https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify](https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify)
+
+## 🔧 Configuration Guide
+
+This project uses environment variables to manage configuration across development and production environments.
+
+Environment variables allow us to change behavior (like API URLs or feature flags) without modifying the source code.
+
+---
+
+### 📦 Environment Files
+
+The project supports the following environment files:
+
+- `.env.local` → Your personal local overrides (not committed)
+- `.env.development` → Team defaults for development
+- `.env.production` → Defaults used during production build
+- `.env.example` → Safe template for new developers
+
+Environment loading priority (highest to lowest):
+
+.env.local  
+.env.development  
+.env.production  
+
+---
+
+### 🔑 Main Environment Variables
+
+| Variable | Required | Description |
+|----------|----------|------------|
+| REACT_APP_API_URL | Yes | Base URL used for all API requests |
+| REACT_APP_ENV | Yes | Current runtime environment (e.g., development, production) |
+| REACT_APP_APP_NAME | No | Display name of the application |
+| REACT_APP_LOG_LEVEL | No | Logging level (debug, info, warn, error) |
+| REACT_APP_ENABLE_ANALYTICS | No | Enable or disable analytics (true/false) |
+
+---
+
+### 🛠 Setting Up Your Local Environment
+
+1. Copy the example file:
+
+Mac/Linux: cp .env.example .env.local
+
+Or manually duplicate `.env.example` and rename it to: .env.local
+
+
+2. Edit `.env.local` and adjust values for your machine.
+
+---
+
+### 🚨 Required Variables
+
+The following variables are required for the app to start:
+
+- REACT_APP_API_URL  
+- REACT_APP_ENV  
+
+If any required variable is missing, the app will throw an error during startup.
+
+Example error:
+
+❌ Missing required environment variable: REACT_APP_API_URL  
+Please add it to your .env.local file.
+
+---
+
+### 🔍 Viewing Loaded Configuration (Development Only)
+
+When running: npm start
+
+
+Open the browser developer console.
+
+You will see:
+
+🔧 Loaded App Config
+
+This displays all currently loaded configuration values.
+
+Note:
+- This log appears only in development.
+- It does not appear in production builds.
+
+---
+
+### 🔐 Important
+
+- Never commit `.env.local`
+- Never commit real API keys or secrets
+- Only commit `.env.example` with safe placeholder values
+
+
+
