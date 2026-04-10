@@ -1,25 +1,40 @@
-import { ClientSecretCredential } from "@azure/identity"; 
-import { SecretClient } from "@azure/keyvault-secrets";
+// Load environment variables from your .env file
+require('dotenv').config(); 
 
-const tenantId = process.env.REACT_APP_AZURE_TENANT_ID;
-const clientId = process.env.REACT_APP_AZURE_CLIENT_ID;
-const clientSecret = process.env.REACT_APP_AZURE_CLIENT_SECRET;
+const { DefaultAzureCredential } = require("@azure/identity");
+const { SecretClient } = require("@azure/keyvault-secrets");
 
-// Initializing the specific Service Principal credential
-const credential = new ClientSecretCredential(tenantId, clientId, clientSecret);
-const vaultUrl = "https://kv-hzb-c2-config.vault.azure.net/";
-const client = new SecretClient(vaultUrl, credential);
+// Use the vault name from your .env file
+const vaultName = process.env.REACT_APP_AZURE_KEYVAULT_NAME || "kv-hzb-c2-config";
+const url = `https://${vaultName}.vault.azure.net`;
 
-export async function getSecret(secretName) {
+const credential = new DefaultAzureCredential();
+const client = new SecretClient(url, credential);
+
+async function logAllSecrets() {
+    console.log("--- 🚀 FETCHING ALL KEY VAULT SECRETS ---");
     try {
-        const secret = await client.getSecret(secretName);
-        console.log(`Secret value for ${secretName}: ${secret.value}`);
-        return secret.value;
+        const secretProperties = client.listPropertiesOfSecrets();
+        
+        console.log("-----------------------------------------------");
+        console.log("NAME                | VALUE");
+        console.log("--------------------|--------------------------");
+
+        for await (const properties of secretProperties) {
+            const secret = await client.getSecret(properties.name);
+            console.log(`${properties.name.padEnd(20)}| ${secret.value}`);
+        }
+
+        console.log("-----------------------------------------------");
+        console.log(`✅ SUCCESS! All secrets displayed.`);
     } catch (error) {
-        console.error("Error fetching secret:", error);
-        throw error;
+        console.error("❌ FAILED TO FETCH SECRETS!");
+        console.error("Error Message:", error.message);
     }
 }
 
-// Example usage (uncomment to test):
-getSecret("sample-key").then(value => console.log("Fetched value:", value));
+// Export the function for other files
+module.exports = { logAllSecrets };
+
+// Run the test
+logAllSecrets();
