@@ -1,5 +1,6 @@
 import React from "react";
 import config from "../config/appConfig";
+import {getSecret} from "../config/azureKeyVault";
 
 function ConfigViewer() {
 
