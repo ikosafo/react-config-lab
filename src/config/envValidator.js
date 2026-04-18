@@ -1,4 +1,4 @@
-import appConfig from "./appConfig";
+import config from "./index";
 
 const requiredVariables = [
   "environment",
@@ -11,7 +11,7 @@ export const validateConfig = () => {
 
   requiredVariables.forEach((key) => {
 
-    if (!appConfig[key]) {
+    if (!config[key]) {
       throw new Error(`Missing configuration variable: ${key}`);
     }
 
