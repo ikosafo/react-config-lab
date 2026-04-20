@@ -1,9 +1,7 @@
 import React from "react";
-import config from "../config/appConfig";
 import environments from "../config/environments";
 
-function EnvironmentBanner() {
-
+function EnvironmentBanner({ config }) {
   const env = environments[config.environment];
 
   return (
