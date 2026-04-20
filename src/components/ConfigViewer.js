@@ -1,8 +1,6 @@
 import React from "react";
-import config from "../config/appConfig";
 
-function ConfigViewer() {
-
+function ConfigViewer({ config }) {
   return (
     <div>
 

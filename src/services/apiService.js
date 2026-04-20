@@ -1,12 +1,13 @@
 import axios from "axios";
-import config from "../config/appConfig";
-import { logger } from "../utils/logger";
+import { createLogger } from "../utils/logger";
 
-const client = axios.create({
+export const createApiClient = config => axios.create({
   baseURL: config.apiUrl
 });
 
-export const fetchUsers = async () => {
+export const fetchUsers = async config => {
+  const client = createApiClient(config);
+  const logger = createLogger(config);
 
   logger.log("info", "Fetching users from API");
 
