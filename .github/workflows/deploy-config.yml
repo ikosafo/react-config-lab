@@ -1,0 +1,67 @@
+name: Deploy Config to Azure Key Vault
+
+on:
+  push:
+    branches:
+      - rachel-branch
+      - main
+  pull_request:
+    branches:
+      - rachel-branch
+      - main
+
+jobs:
+  deploy-secrets:
+    runs-on: ubuntu-latest
+
+    steps:
+
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Install jq
+        run: sudo apt-get install -y jq
+
+      - name: Print debug info
+        run: |
+          echo "Branch: ${{ github.ref_name }}"
+          echo "Event: ${{ github.event_name }}"
+
+      - name: Login to Azure
+        run: |
+          az login --service-principal \
+            --username ${{ secrets.AZURE_CLIENT_ID }} \
+            --password ${{ secrets.AZURE_CLIENT_SECRET }} \
+            --tenant ${{ secrets.AZURE_TENANT_ID }}
+
+      - name: Validate JSON config
+        run: |
+          if [ "${{ github.event_name }}" == "pull_request" ]; then
+            echo "Validating test config..."
+            jq . config/test-secrets.json
+          else
+            echo "Validating real config..."
+            jq . config/secrets.json
+          fi
+
+      - name: Deploy secrets to Key Vault
+        if: github.event_name == 'push'
+        run: |
+          echo "Deploying secrets to Key Vault..."
+          jq -r 'to_entries[] | "\(.key)=\(.value)"' config/secrets.json | \
+          while IFS='=' read -r key value; do
+            echo "Uploading secret: $key"
+            az keyvault secret set \
+              --vault-name kv-hzb-c2-config \
+              --name "$key" \
+              --value "$value"
+            echo "$key uploaded successfully"
+          done
+
+      - name: Verify secrets in Key Vault
+        if: github.event_name == 'push'
+        run: |
+          echo "Verifying secrets in Key Vault..."
+          az keyvault secret list \
+            --vault-name kv-hzb-c2-config \
+            --output table
