@@ -1,0 +1,115 @@
+name: Deploy Config to Azure Key Vault
+
+on:
+  push:
+    branches:
+      # Sprint requirement says to use the working branch instead of assuming main.
+      - matthew-branch
+      - develop
+  pull_request:
+    branches:
+      - matthew-branch
+      - develop
+
+permissions:
+  contents: read
+
+concurrency:
+  # Cancel older runs on the same ref so only the latest config deployment attempt continues.
+  group: deploy-config-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  # Centralize the vault name so the deploy step and future validation steps use one value.
+  KEY_VAULT_NAME: kv-hzb-c2-config
+  AZURE_CORE_OUTPUT: none
+
+jobs:
+  validate-and-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Debug workflow context
+        run: |
+          set -euo pipefail
+          echo "Event: $GITHUB_EVENT_NAME"
+          echo "Ref: $GITHUB_REF"
+          echo "SHA: $GITHUB_SHA"
+
+      - name: Install jq
+        run: |
+          set -euo pipefail
+          # jq is used to read the JSON config files and extract each secret name/value pair.
+          sudo apt-get update
+          sudo apt-get install -y jq
+
+      - name: Select config file
+        id: config
+        run: |
+          set -euo pipefail
+
+          # Pull requests only validate the dummy file so real secrets are never touched.
+          if [ "$GITHUB_EVENT_NAME" = "pull_request" ]; then
+            echo "file=config/test-secrets.json" >> "$GITHUB_OUTPUT"
+            echo "Using dummy PR config."
+          else
+            echo "file=config/secrets.json" >> "$GITHUB_OUTPUT"
+            echo "Using real push config."
+          fi
+
+      - name: Validate selected JSON file exists
+        run: |
+          set -euo pipefail
+          # Fail early with a clear message if the expected config file is missing from the repo.
+          test -f "${{ steps.config.outputs.file }}" || {
+            echo "::error::Missing config file: ${{ steps.config.outputs.file }}"
+            exit 1
+          }
+
+      - name: Preview secret names
+        run: |
+          set -euo pipefail
+          # Print only the secret names for review without exposing secret values in logs.
+          jq -r 'keys[]' "${{ steps.config.outputs.file }}"
+
+      - name: Azure login
+        if: github.event_name == 'push'
+        run: |
+          set -euo pipefail
+
+          # Authenticate Azure CLI with the service principal stored in GitHub secrets.
+          az login --service-principal \
+            --username "${{ secrets.AZURE_CLIENT_ID }}" \
+            --password "${{ secrets.AZURE_CLIENT_SECRET }}" \
+            --tenant "${{ secrets.AZURE_TENANT_ID }}" \
+            --output none
+
+      - name: Deploy secrets to Azure Key Vault
+        if: github.event_name == 'push'
+        run: |
+          set -euo pipefail
+          # Push events use the real config file selected earlier in the workflow.
+          CONFIG_FILE="${{ steps.config.outputs.file }}"
+
+          # Iterate through each JSON entry and upload it as a Key Vault secret.
+          jq -r 'to_entries[] | @base64' "$CONFIG_FILE" | while read -r entry; do
+            key=$(echo "$entry" | base64 --decode | jq -r '.key')
+            value=$(echo "$entry" | base64 --decode | jq -r '.value')
+
+            echo "Uploading secret: $key"
+
+            az keyvault secret set \
+              --vault-name "$KEY_VAULT_NAME" \
+              --name "$key" \
+              --value "$value" \
+              --output none
+          done
+
+          echo "Deployment complete."
+
+      - name: Skip deployment for pull requests
+        if: github.event_name == 'pull_request'
+        run: echo "Pull request detected. Validation only. No secrets deployed."
