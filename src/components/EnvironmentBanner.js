@@ -1,5 +1,5 @@
 import React from "react";
-import config from "../config/appConfig";
+import config from "../config";
 import environments from "../config/environments";
 
 function EnvironmentBanner() {

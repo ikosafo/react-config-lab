@@ -1,4 +1,4 @@
-import appConfig from "./appConfig";
+import appConfig from "./index";
 
 const requiredVariables = [
   "environment",

@@ -1,5 +1,5 @@
 import axios from "axios";
-import config from "../config/appConfig";
+import config from "../config";
 import { logger } from "../utils/logger";
 
 const client = axios.create({
@@ -7,6 +7,8 @@ const client = axios.create({
 });
 
 export const fetchUsers = async () => {
+  // Keep baseURL aligned with centrally loaded config.
+  client.defaults.baseURL = config.apiUrl;
 
   logger.log("info", "Fetching users from API");
 
