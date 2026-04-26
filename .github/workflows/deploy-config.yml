@@ -81,8 +81,8 @@ jobs:
           KEY_VAULT_NAME: ${{ secrets.AZURE_KEYVAULT_NAME }}
         run: |
           if [ -z "$KEY_VAULT_NAME" ]; then
-            echo "Missing required GitHub secret: AZURE_KEYVAULT_NAME"
-            exit 1
+            KEY_VAULT_NAME="kv-hzb-c2-config"
+            echo "AZURE_KEYVAULT_NAME not set; defaulting to $KEY_VAULT_NAME"
           fi
 
           while IFS= read -r key; do
