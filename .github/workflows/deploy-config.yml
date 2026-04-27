@@ -111,5 +111,7 @@ jobs:
           echo "Deployment complete."
 
       - name: Skip deployment for pull requests
-        if: github.event_name == 'pull_request'
-        run: echo "Pull request detected. Validation only. No secrets deployed."
+        if: ${{ github.event_name == 'pull_request' && always() }}
+        run: |
+          # Run this PR-only summary even if an earlier validation step failed.
+          echo "Pull request detected. Validation only. No secrets deployed."
