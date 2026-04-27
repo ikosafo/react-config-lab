@@ -4,11 +4,11 @@ on:
   push:
     branches:
       # Sprint requirement says to use the working branch instead of assuming main.
-      - matthew-branch
+      - ranford-branch
       - develop
   pull_request:
     branches:
-      - matthew-branch
+      - ranford-branch
       - develop
 
 permissions:
