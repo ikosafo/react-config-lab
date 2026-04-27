@@ -9,8 +9,9 @@ Automate deployment of configuration values to Azure Key Vault whenever code is 
 This sprint adds a GitHub Actions workflow that:
 
 1. Validates the JSON configuration file on every push and pull request.
-2. Deploys secrets to Azure Key Vault on push events.
+2. Deploys secrets to Azure Key Vault on push events to `Florence-branch` or `develop`.
 3. Uses Service Principal authentication from GitHub Secrets.
+4. Uses `config/test-secrets.json` during pull request validation so the pipeline can run without real secrets.
 
 ## Files Used
 
@@ -51,13 +52,17 @@ Path:
 - Installs `jq`
 - Confirms the JSON file exists
 - Confirms JSON is valid and has object shape (`{ "key": "value" }`)
+- Uses `config/test-secrets.json` for pull requests and `src/config/keyvault-secrets.json` for pushes
 
 ### 2) Deployment Job (`deploy-to-keyvault`)
 
-- Runs only on `push`
+- Runs only on `push` to `Florence-branch` or `develop`
 - Waits for validation job to pass
 - Logs into Azure using Service Principal
 - Optionally sets Azure subscription
+- Prints event and branch details for easier debugging
+- Validates that required Azure secrets exist before login
+- Verifies the target Key Vault is reachable before uploading secrets
 - Reads each key from JSON
 - Creates or updates each secret in Key Vault
 - Skips keys whose value is `null`
@@ -110,16 +115,19 @@ Expected output: all three secrets show as `FOUND`.
 
 - Check `AZURE_CLIENT_ID`, `AZURE_CLIENT_SECRET`, and `AZURE_TENANT_ID` values.
 - Confirm Service Principal has Key Vault secret set permissions.
+- Confirm the workflow is running on `push` to `Florence-branch` or `develop`.
 
 ### Validation fails
 
 - Confirm `/src/config/keyvault-secrets.json` exists.
 - Confirm file contains valid JSON object syntax.
+- Confirm `jq` is available; the workflow installs it automatically if needed.
 
 ### Secrets not updating
 
 - Confirm target vault name is correct.
 - Confirm keys in JSON match expected secret names.
+- Confirm `AZURE_KEYVAULT_NAME` is set correctly or let the workflow fall back to `kv-hzb-c2-config`.
 
 ## Outcome
 
