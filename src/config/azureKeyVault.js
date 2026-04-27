@@ -6,17 +6,31 @@ const credential = new DefaultAzureCredential();
 const vaultUrl = "https://kv-hzb-c2-config.vault.azure.net/";
 const client = new SecretClient(vaultUrl, credential);
 
-
-export async function getSecret(secretName) {
-    try {
-        const secret = await client.getSecret(secretName);
-        console.log(`Secret value for ${secretName}: ${secret.value}`);
-        return secret.value;
-    } catch (error) {
-        console.error("Error fetching secret:", error);
-        throw error;
+let keyVaultClient;
+ 
+const getKeyVaultClient = () => {
+    if (!keyVaultClient) {
+        const credential = new DefaultAzureCredential();
+        keyVaultClient = new SecretClient(vaultUrl, credential);
     }
-}
-
-// Example usage (uncomment to test):
- getSecret("app-env").then(value => console.log("Fetched value:", value));
+ 
+    return keyVaultClient;
+};
+ 
+export const getSecretValue = async (secretName, fallbackValue = "") => {
+    if (!secretName) {
+        return fallbackValue;
+    }
+ 
+    try {
+        const client = getKeyVaultClient();
+        const secret = await client.getSecret(secretName);
+        return secret?.value ?? fallbackValue;
+    } catch (error) {
+        if (process.env.NODE_ENV === "development") {
+            console.warn(`Key Vault fallback used for ${secretName}:`, error.message);
+        }
+        return fallbackValue;
+    }
+};
+ 

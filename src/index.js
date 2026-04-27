@@ -4,6 +4,7 @@ import './index.css';
 import App from './App';
 import reportWebVitals from './reportWebVitals';
 import { validateConfig } from './config/envValidator';
+import { loadAppConfigFromKeyVault } from './config/appConfig';
 
 const root = ReactDOM.createRoot(document.getElementById('root'));
 
@@ -31,14 +32,18 @@ const renderConfigError = (message) => {
   );
 };
 
-try {
-  validateConfig();
-  renderApp();
-} catch (error) {
-  console.error(error);
-  renderConfigError(error.message);
-}
-
+const bootstrap = async () => {
+  try {
+    await loadAppConfigFromKeyVault();
+    validateConfig();
+    renderApp();
+  } catch (error) {
+    console.error(error);
+    renderConfigError(error.message);
+  }
+};
+ 
+bootstrap();
 // If you want to start measuring performance in your app, pass a function
 // to log results (for example: reportWebVitals(console.log))
 // or send to an analytics endpoint. Learn more: https://bit.ly/CRA-vitals
