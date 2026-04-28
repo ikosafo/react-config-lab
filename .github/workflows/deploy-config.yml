@@ -31,21 +31,32 @@ jobs:
   validate-config:
     name: Validate Config JSON
     runs-on: ubuntu-latest
+    env: 
+      CONFIG_FILE: ${{ github.event_name == 'pull_request' && 'src/config/test-secrets.json' || 'src/config/keyvault-secrets.json' }}
+ 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Select config file for this event
+      - name: Print workflow context
         shell: bash
         run: |
           set -euo pipefail
-          if [ "${{ github.event_name }}" = "pull_request" ]; then
-            echo "CONFIG_FILE=$TEST_CONFIG_FILE" >> "$GITHUB_ENV"
-            echo "Pull request build -> using dummy config: $TEST_CONFIG_FILE"
-          else
-            echo "CONFIG_FILE=$REAL_CONFIG_FILE" >> "$GITHUB_ENV"
-            echo "Push build -> using real config: $REAL_CONFIG_FILE"
-          fi
+          echo "Event: ${{ github.event_name }}"
+          echo "Branch: ${{ github.ref_name }}"
+          echo "Config file: $CONFIG_FILE"
+
+      # - name: Select config file for this event
+      #   shell: bash
+      #   run: |
+      #     set -euo pipefail
+      #     if [ "${{ github.event_name }}" = "pull_request" ]; then
+      #       echo "CONFIG_FILE=$TEST_CONFIG_FILE" >> "$GITHUB_ENV"
+      #       echo "Pull request build -> using dummy config: $TEST_CONFIG_FILE"
+      #     else
+      #       echo "CONFIG_FILE=$REAL_CONFIG_FILE" >> "$GITHUB_ENV"
+      #       echo "Push build -> using real config: $REAL_CONFIG_FILE"
+      #     fi
 
       - name: Ensure jq is available
         shell: bash
@@ -137,4 +148,4 @@ jobs:
             echo "Uploaded secret: $key"
           done < <(jq -r 'keys[]' "$CONFIG_FILE")
 
- 
+         
