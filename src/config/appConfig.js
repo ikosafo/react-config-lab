@@ -1,34 +1,23 @@
- 
-const appConfig = {
-  environment: process.env.REACT_APP_ENV,
-  apiUrl: process.env.REACT_APP_API_URL,
-  //appName: process.env.REACT_APP_APP_NAME || "My App",
-  //logLevel: process.env.REACT_APP_LOG_LEVEL || "info",
-  analyticsEnabled: process.env.REACT_APP_ENABLE_ANALYTICS === "true"
+// Load secrets from environment variables (browser safe)
+const config = {
+  "API-BASE-URL": process.env.REACT_APP_API_BASE_URL || "local-fallback-api",
+  "APP-ENV": process.env.REACT_APP_APP_ENV || "local-fallback-env",
+  "SAMPLE-KEY": process.env.REACT_APP_SAMPLE_KEY || "local-fallback-key",
 };
- 
-const requiredEnvVars = {
-  environment: "REACT_APP_ENV",
-  apiUrl: "REACT_APP_API_URL"
-};
- 
-const missingEnvVars = Object.entries(requiredEnvVars)
-  .filter(([key]) => !appConfig[key])
-  .map(([, envVarName]) => envVarName);
- 
-if (missingEnvVars.length > 0) {
-  throw new Error(
-    `Missing required environment variable(s): ${missingEnvVars.join(", ")}. ` +
-    `Please add them to your .env.local or .env.development file.`
-  );
+
+// Function to log which values are from .env and which are fallbacks
+export function logConfigSource() {
+  Object.entries(config).forEach(([key, value]) => {
+    const envVar = process.env[`REACT_APP_${key.replace(/-/g, "_")}`];
+    if (envVar) {
+      console.log(`${key}: ${value} (from .env)`);
+    } else {
+      console.log(`${key}: ${value} (fallback)`);
+    }
+  });
 }
- 
- 
-const isDev = process.env.NODE_ENV === 'development';
- 
-if (isDev) {
-  console.log('Loaded config:', appConfig);
+
+// Return the config object
+export default function loadConfig() {
+  return config;
 }
- 
-export default appConfig;
- 
