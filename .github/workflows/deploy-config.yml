@@ -18,8 +18,12 @@ permissions:
   contents: read
 
 # Shared variables
+# CONFIG_FILE is chosen per-event:
+#   pull_request -> config/test-secrets.json (dummy values, safe for PRs)
+#   push         -> src/config/keyvault-secrets.json (real config, deployed to Key Vault)
 env:
-  CONFIG_FILE: src/config/keyvault-secrets.json
+  REAL_CONFIG_FILE: src/config/keyvault-secrets.json
+  TEST_CONFIG_FILE: config/test-secrets.json
   DEFAULT_KEY_VAULT_NAME: kv-hzb-c2-config
 
 jobs:
@@ -30,6 +34,18 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+
+      - name: Select config file for this event
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            echo "CONFIG_FILE=$TEST_CONFIG_FILE" >> "$GITHUB_ENV"
+            echo "Pull request build -> using dummy config: $TEST_CONFIG_FILE"
+          else
+            echo "CONFIG_FILE=$REAL_CONFIG_FILE" >> "$GITHUB_ENV"
+            echo "Push build -> using real config: $REAL_CONFIG_FILE"
+          fi
 
       - name: Ensure jq is available
         shell: bash
@@ -61,6 +77,8 @@ jobs:
     if: github.event_name == 'push'
     runs-on: ubuntu-latest
     needs: validate-config
+    env:
+      CONFIG_FILE: src/config/keyvault-secrets.json
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
