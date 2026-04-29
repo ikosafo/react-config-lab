@@ -15,7 +15,7 @@ const appConfig = {
   analyticsEnabled: process.env.REACT_APP_ENABLE_ANALYTICS === "true"
 };
 
-// const appConfig = { ...defaultConfig };
+
 
  
 const keyVaultSecretNames = {
