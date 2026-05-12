@@ -107,7 +107,6 @@ app.get("/api/config", async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 });
-//testing to
 app.listen(port, () => {
   console.log(`Key Vault proxy server running on http://localhost:${port}`);
 });
