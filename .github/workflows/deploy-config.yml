@@ -20,7 +20,7 @@ permissions:
 
 # Shared/global environment variables used in both jobs
 env:
-  CONFIG_FILE: src/config/keyvault-secrets.json
+  CONFIG_FILE: src/config/secrets.json
   DEFAULT_KEY_VAULT_NAME: kv-hzb-c2-config
 
 jobs:
