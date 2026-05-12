@@ -29,7 +29,7 @@ jobs:
     name: Validate Config JSON
     runs-on: ubuntu-latest
     env:
-      CONFIG_FILE: ${{ github.event_name == 'pull_request' && 'src/config/test-secrets.json' || 'src/config/keyvault-secrets.json' }}
+      CONFIG_FILE: ${{ github.event_name == 'pull_request' && 'src/config/test-secrets.json' || 'src/config/secrets.json' }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
