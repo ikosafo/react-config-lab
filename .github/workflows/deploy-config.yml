@@ -1,38 +1,67 @@
 name: Deploy Config to Azure Key Vault
 
+# Runs on pushes (to actually deploy) and pull requests (to validate config
+# without deploying), scoped to the branches where Key Vault changes are expected.
 on:
   push:
     branches:
       - rachel-branch
       - main
+      - develop
   pull_request:
     branches:
       - rachel-branch
       - main
+      - develop
 
 jobs:
   deploy-secrets:
+    # ubuntu-latest is used because the Azure CLI and jq are readily available
+    # on GitHub-hosted Linux runners without extra setup.
     runs-on: ubuntu-latest
 
     steps:
 
       - name: Checkout repository
+        # v4 is required; older versions (v2/v3) rely on Node 16 which GitHub
+        # has deprecated, causing annotation warnings that break status checks.
         uses: actions/checkout@v4
 
       - name: Install jq
-        run: sudo apt-get install -y jq
+        # jq is not pre-installed on the runner image at a version that supports
+        # all filters used below (to_entries, @sh), so we install explicitly.
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y jq
 
       - name: Print debug info
+        # Surfaces which branch and event type triggered the run so failures in
+        # the branch-conditional logic below are easy to diagnose in logs.
         run: |
           echo "Branch: ${{ github.ref_name }}"
           echo "Event: ${{ github.event_name }}"
 
       - name: Login to Azure
+        # Pull requests only validate config. They should not need Azure secrets
+        # or write access, so Azure login is skipped for PR runs.
+        if: github.event_name == 'push'
+        # Credentials are injected via env vars rather than inline expressions so
+        # the values are never echoed into the rendered workflow YAML or step logs.
         env:
           AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
           AZURE_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
           AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
         run: |
+          set -euo pipefail
+
+          # Give a clear error if any GitHub Actions secret was not configured.
+          : "${AZURE_CLIENT_ID:?Missing GitHub secret: AZURE_CLIENT_ID}"
+          : "${AZURE_CLIENT_SECRET:?Missing GitHub secret: AZURE_CLIENT_SECRET}"
+          : "${AZURE_TENANT_ID:?Missing GitHub secret: AZURE_TENANT_ID}"
+
+          # --service-principal authenticates as an app registration (non-interactive),
+          # which is the only mode supported in CI where there is no human to complete
+          # a browser-based login flow.
           az login --service-principal \
             --username "$AZURE_CLIENT_ID" \
             --password "$AZURE_CLIENT_SECRET" \
@@ -40,32 +69,64 @@ jobs:
 
       - name: Validate JSON config
         run: |
+          set -euo pipefail
+
+          # PRs use the safe dummy-value file so reviewers can validate structure
+          # without needing access to real secrets committed to the repo.
           if [ "${{ github.event_name }}" == "pull_request" ]; then
-            echo "Validating test config..."
-            jq . config/test-secrets.json
+            CONFIG_FILE="config/test-secrets.json"
+            echo "Validating test config: $CONFIG_FILE"
           else
-            echo "Validating real config..."
-            jq . config/secrets.json
+            CONFIG_FILE="config/secrets.json"
+            echo "Validating real config: $CONFIG_FILE"
           fi
 
+          # `jq .` exits non-zero on malformed JSON, stopping the workflow before
+          # a broken file can be deployed.
+          jq . "$CONFIG_FILE"
+
+          # These keys are required by the Sprint 3 pipeline exercise. `jq -e`
+          # fails the step when any required key is missing or null.
+          jq -e '.API_BASE_URL and .APP_ENV and .SAMPLE_KEY' "$CONFIG_FILE" > /dev/null
+          echo "JSON syntax and required keys are valid."
+
       - name: Deploy secrets to Key Vault
+        # Only runs on push so that pull request builds can validate without
+        # writing real secrets to the vault (prevents accidental pollution from
+        # draft or review branches).
         if: github.event_name == 'push'
         run: |
+          set -euo pipefail
+
           echo "Deploying secrets to Key Vault..."
+          # `to_entries[]` flattens the JSON object into key/value pairs so each
+          # secret can be uploaded individually; Key Vault does not accept bulk imports.
           jq -r 'to_entries[] | "\(.key)=\(.value)"' config/secrets.json | \
           while IFS='=' read -r key value; do
-            echo "Uploading secret: $key"
+            # Azure Key Vault secret names allow hyphens, but not underscores.
+            # This keeps JSON keys readable while uploading valid Key Vault names.
+            secret_name="${key//_/-}"
+
+            echo "Uploading secret: $secret_name"
+            # `secret set` creates the secret if it doesn't exist and rotates the
+            # value if it does, making the step idempotent across re-runs.
             az keyvault secret set \
               --vault-name kv-hzb-c2-config \
-              --name "$key" \
+              --name "$secret_name" \
               --value "$value"
-            echo "$key uploaded successfully"
+            echo "$secret_name uploaded successfully"
           done
 
       - name: Verify secrets in Key Vault
+        # Also push-only: confirms the vault reflects the expected set of secrets
+        # after upload, catching partial failures where some keys were skipped.
         if: github.event_name == 'push'
         run: |
+          set -euo pipefail
+
           echo "Verifying secrets in Key Vault..."
+          # `--output table` formats the list for human readability in the job log
+          # without needing an extra jq filter.
           az keyvault secret list \
             --vault-name kv-hzb-c2-config \
             --output table
