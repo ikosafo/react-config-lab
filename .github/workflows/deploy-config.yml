@@ -3,11 +3,11 @@ name: Deploy Config to Azure Key Vault
 on:
   push:
     branches:
-      - ransford-branch 
+      - rano-branch 
       - develop
   pull_request:
     branches:
-      - ransford-branch
+      - rano-branch
       - develop
 
 jobs:
