@@ -3,29 +3,74 @@ name: Deploy Config to Azure Key Vault
 on:
   push:
     branches:
-      - rachel-branch
-      - main
+      - ransford-branch 
+      - develop
   pull_request:
     branches:
-      - rachel-branch
-      - main
+      - ransford-branch
+      - develop
 
 jobs:
   deploy-secrets:
     runs-on: ubuntu-latest
+    env:
+      KEY_VAULT_NAME: kv-hzb-c2-config
 
     steps:
-
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Install jq
-        run: sudo apt-get install -y jq
+      - name: Install required tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y jq azure-cli
 
       - name: Print debug info
         run: |
-          echo "Branch: ${{ github.ref_name }}"
           echo "Event: ${{ github.event_name }}"
+          echo "Ref name: ${{ github.ref_name }}"
+          echo "Target branch: ${{ github.event.pull_request.base.ref || github.ref_name }}"
+          echo "Actor: ${{ github.actor }}"
+
+      - name: Choose config file
+        id: choose-config
+        run: |
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            echo "Using test config file for PR validation"
+            echo "config_file=config/test-secrets.json" >> "$GITHUB_OUTPUT"
+          else
+            echo "Using real config file for deployment"
+            echo "config_file=config/secrets.json" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Validate JSON config
+        run: |
+          set -euo pipefail
+          CONFIG_FILE="${{ steps.choose-config.outputs.config_file }}"
+          echo "Validating config file: $CONFIG_FILE"
+          jq empty "$CONFIG_FILE"
+
+          required_keys=(
+            "REACT-APP-ENV"
+            "REACT-APP-API-URL"
+            "react-app-app-name"
+            "REACT-APP-LOG-LEVEL"
+            "REACT-APP-ENABLE-ANALYTICS"
+          )
+
+          missing=()
+          for key in "${required_keys[@]}"; do
+            if ! jq -e --arg key "$key" 'has($key)' "$CONFIG_FILE" >/dev/null; then
+              missing+=("$key")
+            fi
+          done
+
+          if [ ${#missing[@]} -gt 0 ]; then
+            echo "ERROR: Required key(s) missing: ${missing[*]}"
+            exit 1
+          fi
+
+          echo "JSON config validation succeeded"
 
       - name: Login to Azure
         env:
@@ -33,39 +78,32 @@ jobs:
           AZURE_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
           AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
         run: |
+          set -euo pipefail
           az login --service-principal \
             --username "$AZURE_CLIENT_ID" \
             --password "$AZURE_CLIENT_SECRET" \
             --tenant "$AZURE_TENANT_ID"
 
-      - name: Validate JSON config
-        run: |
-          if [ "${{ github.event_name }}" == "pull_request" ]; then
-            echo "Validating test config..."
-            jq . config/test-secrets.json
-          else
-            echo "Validating real config..."
-            jq . config/secrets.json
-          fi
-
       - name: Deploy secrets to Key Vault
         if: github.event_name == 'push'
         run: |
-          echo "Deploying secrets to Key Vault..."
-          jq -r 'to_entries[] | "\(.key)=\(.value)"' config/secrets.json | \
-          while IFS='=' read -r key value; do
+          set -euo pipefail
+          CONFIG_FILE="${{ steps.choose-config.outputs.config_file }}"
+          echo "Deploying secrets from $CONFIG_FILE"
+          jq -r 'to_entries[] | "\(.key)\u0000\(.value)"' "$CONFIG_FILE" | \
+          while IFS= read -r -d '' entry; do
+            key="${entry%%$'\0'*}"
+            value="${entry#*$'\0'}"
             echo "Uploading secret: $key"
             az keyvault secret set \
-              --vault-name kv-hzb-c2-config \
+              --vault-name "$KEY_VAULT_NAME" \
               --name "$key" \
               --value "$value"
-            echo "$key uploaded successfully"
+            echo "Uploaded: $key"
           done
 
       - name: Verify secrets in Key Vault
         if: github.event_name == 'push'
         run: |
           echo "Verifying secrets in Key Vault..."
-          az keyvault secret list \
-            --vault-name kv-hzb-c2-config \
-            --output table
+          az keyvault secret list --vault-name "$KEY_VAULT_NAME" --output table
