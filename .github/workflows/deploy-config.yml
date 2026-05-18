@@ -20,6 +20,7 @@ permissions:
 # Shared/global environment variables used in both jobs
 env:
   CONFIG_FILE: src/config/keyvault-secrets.json
+
   DEFAULT_KEY_VAULT_NAME: kv-hzb-c2-config
 
 jobs:
@@ -95,7 +96,7 @@ jobs:
           printf 'OK: All required keys found in %s\n' "$CONFIG_FILE"
 
   # Deployment job: only runs on push (not on PR)
-  deploy-to-keyvault:
+  deploy-to-keyvault:==
     name: Deploy Secrets To Azure Key Vault
     if: github.event_name == 'push'
     runs-on: ubuntu-latest
