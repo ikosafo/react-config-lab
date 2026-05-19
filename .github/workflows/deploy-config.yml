@@ -179,34 +179,34 @@ jobs:
           set -euo pipefail
           jq empty "$CONFIG_FILE"
 
-      # - name: Validate required keys exist
-      #   shell: bash
-      #   run: |
-      #     set -euo pipefail
+      - name: Validate required keys exist
+        shell: bash
+        run: |
+          set -euo pipefail
 
-      #     # Define required keys based on config file
-      #     if [[ "$CONFIG_FILE" == *"test-secrets.json" ]]; then
-      #       # Test file requires: API_BASE_URL, APP_ENV
-      #       required_keys=("API_BASE_URL" "APP_ENV")
-      #     else
-      #       # requires the Key Vault secret names mapped to the app
-      #       required_keys=("react-app-api-url" "environment")
-      #     fi
+          # Define required keys based on config file
+          if [[ "$CONFIG_FILE" == *"test-secrets.json" ]]; then
+            # Test file requires: API_BASE_URL, APP_ENV
+            required_keys=("API_BASE_URL" "APP_ENV")
+          else
+            # requires the Key Vault secret names mapped to the app
+            required_keys=("react-app-api-url" "environment")
+          fi
 
-      #     missing_keys=()
-      #     for key in "${required_keys[@]}"; do
-      #       if ! jq -e --arg k "$key" 'has($k)' "$CONFIG_FILE" > /dev/null 2>&1; then
-      #         missing_keys+=("$key")
-      #       fi
-      #     done
+          missing_keys=()
+          for key in "${required_keys[@]}"; do
+            if ! jq -e --arg k "$key" 'has($k)' "$CONFIG_FILE" > /dev/null 2>&1; then
+              missing_keys+=("$key")
+            fi
+          done
 
-      #     if [ "${#missing_keys[@]}" -ne 0 ]; then
-      #       printf 'ERROR: Missing required keys in %s:\n' "$CONFIG_FILE"
-      #       printf '  - %s\n' "${missing_keys[@]}"
-      #       exit 1
-      #     fi
+          if [ "${#missing_keys[@]}" -ne 0 ]; then
+            printf 'ERROR: Missing required keys in %s:\n' "$CONFIG_FILE"
+            printf '  - %s\n' "${missing_keys[@]}"
+            exit 1
+          fi
 
-      #     printf 'OK: All required keys found in %s\n' "$CONFIG_FILE"
+          printf 'OK: All required keys found in %s\n' "$CONFIG_FILE"
 
   # Deployment job: only runs on push (not on PR)
   deploy-to-keyvault:
