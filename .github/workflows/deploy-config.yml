@@ -96,7 +96,7 @@ jobs:
           printf 'OK: All required keys found in %s\n' "$CONFIG_FILE"
 
   # Deployment job: only runs on push (not on PR)
-  deploy-to-keyvault:==
+  deploy-to-keyvault:
     name: Deploy Secrets To Azure Key Vault
     if: github.event_name == 'push'
     runs-on: ubuntu-latest
