@@ -57,11 +57,31 @@ jobs:
             echo "ERROR: Missing config file: $CONFIG_FILE"
             exit 1
           fi
-      - name: Validate JSON structure
+            - name: Validate JSON structure
         shell: bash
         run: |
           set -euo pipefail
           jq empty "$CONFIG_FILE"
+
+      - name: Validate required keys
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          required_keys=(
+  "API-BASE-URL"
+  "APP-ENV"
+  "SAMPLE-KEY"
+)
+
+          for key in "${required_keys[@]}"; do
+            if ! jq -e --arg k "$key" '.[$k]' "$CONFIG_FILE" > /dev/null; then
+              echo "ERROR: Missing required key: $key"
+              exit 1
+            fi
+          done
+
+          echo "All required keys found"
   # Deployment job: only runs on push (not on PR)
   deploy-to-keyvault:
     name: Deploy Secrets To Azure Key Vault
