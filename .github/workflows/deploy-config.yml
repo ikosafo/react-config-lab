@@ -130,7 +130,7 @@ jobs:
 
           if [ -z "${KEY_VAULT_NAME:-}" ]; then
             KEY_VAULT_NAME="$DEFAULT_KEY_VAULT_NAME"
-            echo "AZURE_KEYVAULT_NAME not set; defaulting to $KEY_VAULT_NAME"
+            echo "AZURE_KEYVAULT_NAME not set; defaults to $KEY_VAULT_NAME"
           fi
 
           while IFS= read -r key; do
