@@ -1,7 +1,5 @@
 name: Deploy Config to Azure Key Vault
 
-# Runs on pushes (to actually deploy) and pull requests (to validate config
-# without deploying), scoped to the branches where Key Vault changes are expected.
 on:
   push:
     branches:
@@ -13,66 +11,64 @@ on:
       - rachel-branch
       - main
       - develop
+  # Task 3: manual trigger with optional dry-run mode
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: 'Preview what would be deployed without making any changes'
+        required: false
+        default: 'false'
+        type: choice
+        options:
+          - 'false'
+          - 'true'
 
 jobs:
   deploy-secrets:
-    # ubuntu-latest is used because the Azure CLI and jq are readily available
-    # on GitHub-hosted Linux runners without extra setup.
     runs-on: ubuntu-latest
+    permissions:
+      contents: write   # needed so the bot can push CONFIG_REPORT.md back
+    env:
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
     steps:
 
       - name: Checkout repository
-        # v4 is required; older versions (v2/v3) rely on Node 16 which GitHub
-        # has deprecated, causing annotation warnings that break status checks.
         uses: actions/checkout@v4
 
       - name: Install jq
-        # jq is not pre-installed on the runner image at a version that supports
-        # all filters used below (to_entries, @sh), so we install explicitly.
         run: |
           sudo apt-get update
           sudo apt-get install -y jq
 
       - name: Print debug info
-        # Surfaces which branch and event type triggered the run so failures in
-        # the branch-conditional logic below are easy to diagnose in logs.
         run: |
-          echo "Branch: ${{ github.ref_name }}"
-          echo "Event: ${{ github.event_name }}"
+          echo "Branch:  ${{ github.ref_name }}"
+          echo "Event:   ${{ github.event_name }}"
+          echo "Dry Run: ${{ github.event.inputs.dry_run || 'false' }}"
 
       - name: Login to Azure
-        # Pull requests only validate config. They should not need Azure secrets
-        # or write access, so Azure login is skipped for PR runs.
-        if: github.event_name == 'push'
-        # Credentials are injected via env vars rather than inline expressions so
-        # the values are never echoed into the rendered workflow YAML or step logs.
+        # PRs only validate — no Azure access needed. Push and manual runs both deploy.
+        if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
         env:
           AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
           AZURE_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
           AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
         run: |
           set -euo pipefail
-
-          # Give a clear error if any GitHub Actions secret was not configured.
           : "${AZURE_CLIENT_ID:?Missing GitHub secret: AZURE_CLIENT_ID}"
           : "${AZURE_CLIENT_SECRET:?Missing GitHub secret: AZURE_CLIENT_SECRET}"
           : "${AZURE_TENANT_ID:?Missing GitHub secret: AZURE_TENANT_ID}"
-
-          # --service-principal authenticates as an app registration (non-interactive),
-          # which is the only mode supported in CI where there is no human to complete
-          # a browser-based login flow.
           az login --service-principal \
             --username "$AZURE_CLIENT_ID" \
             --password "$AZURE_CLIENT_SECRET" \
             --tenant "$AZURE_TENANT_ID"
 
+      # ── Task 2: Expanded validation ──────────────────────────────────────────
       - name: Validate JSON config
         run: |
           set -euo pipefail
 
-          # PRs use the safe dummy-value file so reviewers can validate structure
-          # without needing access to real secrets committed to the repo.
           if [ "${{ github.event_name }}" == "pull_request" ]; then
             CONFIG_FILE="config/test-secrets.json"
             echo "Validating test config: $CONFIG_FILE"
@@ -81,52 +77,180 @@ jobs:
             echo "Validating real config: $CONFIG_FILE"
           fi
 
-          # `jq .` exits non-zero on malformed JSON, stopping the workflow before
-          # a broken file can be deployed.
+          echo "--- Syntax check ---"
           jq . "$CONFIG_FILE"
 
-          # These keys are required by the Sprint 3 pipeline exercise. `jq -e`
-          # fails the step when any required key is missing or null.
+          echo "--- Required keys ---"
           jq -e '.API_BASE_URL and .APP_ENV and .SAMPLE_KEY' "$CONFIG_FILE" > /dev/null
-          echo "JSON syntax and required keys are valid."
+          echo "Required keys present."
 
-      - name: Deploy secrets to Key Vault
-        # Only runs on push so that pull request builds can validate without
-        # writing real secrets to the vault (prevents accidental pollution from
-        # draft or review branches).
-        if: github.event_name == 'push'
+          echo "--- Empty value check ---"
+          empty_keys=$(jq -r 'to_entries[] | select(.value == "" or .value == null) | .key' "$CONFIG_FILE")
+          if [ -n "$empty_keys" ]; then
+            echo "ERROR: The following keys have empty values:"
+            echo "$empty_keys"
+            exit 1
+          fi
+          echo "No empty values found."
+
+          echo "--- URL format check (must use https://) ---"
+          bad_urls=$(jq -r \
+            'to_entries[]
+             | select((.key | ascii_downcase | contains("url"))
+               and (.value | startswith("https://") | not))
+             | "  \(.key) = \(.value)"' \
+            "$CONFIG_FILE")
+          if [ -n "$bad_urls" ]; then
+            echo "ERROR: URL keys must use https://. Found:"
+            echo "$bad_urls"
+            exit 1
+          fi
+          echo "All URL values use https://."
+
+          echo "Validation passed."
+
+      # ── Task 1: Drift detection ───────────────────────────────────────────────
+      - name: Detect configuration drift
+        if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
         run: |
           set -euo pipefail
+          echo "--- Drift Detection Report ---"
 
+          # Fetch secret names from Key Vault, normalise to lowercase for comparison
+          kv_keys=$(az keyvault secret list \
+            --vault-name kv-hzb-c2-config \
+            --query "[].name" -o tsv \
+            | tr '[:upper:]' '[:lower:]' \
+            | LC_ALL=C sort)
+
+          # Read config keys, convert underscores → hyphens and lowercase to match KV naming
+          config_keys=$(jq -r 'keys[]' config/secrets.json \
+            | tr '_' '-' \
+            | tr '[:upper:]' '[:lower:]' \
+            | LC_ALL=C sort)
+
+          missing_from_kv=$(comm -23 <(echo "$config_keys") <(echo "$kv_keys"))
+          missing_from_config=$(comm -13 <(echo "$config_keys") <(echo "$kv_keys"))
+          matches=$(comm -12 <(echo "$config_keys") <(echo "$kv_keys"))
+
+          echo ""
+          echo "Keys matched on both sides:"
+          if [ -n "$matches" ]; then
+            echo "$matches" | sed 's/^/  + /'
+          else
+            echo "  (none)"
+          fi
+
+          echo ""
+          echo "Keys in config but MISSING from Key Vault:"
+          if [ -n "$missing_from_kv" ]; then
+            echo "$missing_from_kv" | sed 's/^/  ! /'
+          else
+            echo "  (none)"
+          fi
+
+          echo ""
+          echo "Keys in Key Vault but MISSING from config:"
+          if [ -n "$missing_from_config" ]; then
+            echo "$missing_from_config" | sed 's/^/  ~ /'
+          else
+            echo "  (none)"
+          fi
+
+          echo ""
+          if [ -z "$missing_from_kv" ] && [ -z "$missing_from_config" ]; then
+            echo "Drift status: CLEAN - config and Key Vault are in sync."
+          else
+            echo "Drift status: DRIFT DETECTED - see report above (pipeline continues)."
+          fi
+
+      # ── Task 3: Real deploy (skipped when dry_run=true) ──────────────────────
+      - name: Deploy secrets to Key Vault
+        if: (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && github.event.inputs.dry_run != 'true'
+        run: |
+          set -euo pipefail
           echo "Deploying secrets to Key Vault..."
-          # `to_entries[]` flattens the JSON object into key/value pairs so each
-          # secret can be uploaded individually; Key Vault does not accept bulk imports.
-          jq -r 'to_entries[] | "\(.key)=\(.value)"' config/secrets.json | \
-          while IFS='=' read -r key value; do
-            # Azure Key Vault secret names allow hyphens, but not underscores.
-            # This keeps JSON keys readable while uploading valid Key Vault names.
+          # Use tab as delimiter so values containing = are handled correctly
+          jq -r 'to_entries[] | "\(.key)\t\(.value)"' config/secrets.json | \
+          while IFS=$'\t' read -r key value; do
             secret_name="${key//_/-}"
-
-            echo "Uploading secret: $secret_name"
-            # `secret set` creates the secret if it doesn't exist and rotates the
-            # value if it does, making the step idempotent across re-runs.
+            echo "Uploading: $secret_name"
             az keyvault secret set \
               --vault-name kv-hzb-c2-config \
               --name "$secret_name" \
               --value "$value"
-            echo "$secret_name uploaded successfully"
+            echo "  $secret_name uploaded successfully"
           done
 
-      - name: Verify secrets in Key Vault
-        # Also push-only: confirms the vault reflects the expected set of secrets
-        # after upload, catching partial failures where some keys were skipped.
-        if: github.event_name == 'push'
+      # ── Task 3: Dry run preview (only when dry_run=true) ─────────────────────
+      - name: Dry run preview
+        if: github.event_name == 'workflow_dispatch' && github.event.inputs.dry_run == 'true'
+        run: |
+          echo "DRY RUN MODE - no changes will be made to Key Vault."
+          echo ""
+          echo "The following secrets WOULD be uploaded:"
+          jq -r 'to_entries[] | "  \(.key | gsub("_"; "-")) -> (value hidden)"' config/secrets.json
+          echo ""
+          echo "Dry run complete. Key Vault was not modified."
+
+      # ── Task 4: Auto-generate CONFIG_REPORT.md ───────────────────────────────
+      - name: Generate CONFIG_REPORT.md
+        if: github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && github.event.inputs.dry_run != 'true')
         run: |
           set -euo pipefail
 
+          TIMESTAMP=$(date -u '+%Y-%m-%d %H:%M:%S UTC')
+          BRANCH="${{ github.ref_name }}"
+          EVENT="${{ github.event_name }}"
+
+          {
+            echo "# Config Deployment Report"
+            echo ""
+            echo "**Generated:** $TIMESTAMP"
+            echo "**Branch:** \`$BRANCH\`"
+            echo "**Trigger:** \`$EVENT\`"
+            echo ""
+            echo "| Secret Name | Last Updated | Version ID |"
+            echo "|-------------|--------------|------------|"
+
+            az keyvault secret list \
+              --vault-name kv-hzb-c2-config \
+              --query "[].name" -o tsv | LC_ALL=C sort | while read -r name; do
+              secret_json=$(az keyvault secret show \
+                --name "$name" \
+                --vault-name kv-hzb-c2-config \
+                --output json)
+              last_updated=$(echo "$secret_json" | jq -r '.attributes.updated')
+              version_id=$(echo "$secret_json" | jq -r '.id' | awk -F'/' '{print $NF}')
+              echo "| \`$name\` | $last_updated | \`$version_id\` |"
+            done
+
+            echo ""
+            echo "> Secret values are never stored in this report."
+          } > CONFIG_REPORT.md
+
+          echo "CONFIG_REPORT.md generated:"
+          cat CONFIG_REPORT.md
+
+      - name: Commit and push CONFIG_REPORT.md
+        if: github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && github.event.inputs.dry_run != 'true')
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add CONFIG_REPORT.md
+          # Only commit if there is actually a change; [skip ci] prevents re-triggering
+          if git diff --cached --quiet; then
+            echo "CONFIG_REPORT.md unchanged — nothing to commit."
+          else
+            git commit -m "chore: update CONFIG_REPORT.md [skip ci]"
+            git push
+          fi
+
+      - name: Verify secrets in Key Vault
+        if: github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && github.event.inputs.dry_run != 'true')
+        run: |
+          set -euo pipefail
           echo "Verifying secrets in Key Vault..."
-          # `--output table` formats the list for human readability in the job log
-          # without needing an extra jq filter.
           az keyvault secret list \
             --vault-name kv-hzb-c2-config \
             --output table
