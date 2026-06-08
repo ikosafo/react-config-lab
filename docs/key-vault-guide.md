@@ -141,17 +141,17 @@ If required values are still missing after fallback, app startup is blocked with
 Create either `.env.local` or `env.local`:
 
 ```env
-REACT_APP_ENV=development
-REACT_APP_CONFIG_API_URL=http://localhost:5000/api/config
-REACT_APP_API_URL=http://localhost:3001/api
-REACT_APP_APP_NAME=React Config Lab (Local)
-REACT_APP_LOG_LEVEL=debug
-REACT_APP_ENABLE_ANALYTICS=false
+REACT_APP_ENV=[value]
+REACT_APP_CONFIG_API_URL=[value]
+REACT_APP_API_URL=[value]
+REACT_APP_APP_NAME=[value]
+REACT_APP_LOG_LEVEL=value
+REACT_APP_ENABLE_ANALYTICS=[value]
 
 AZURE_TENANT_ID=<tenant-id>
 AZURE_CLIENT_ID=<client-id>
 AZURE_CLIENT_SECRET=<client-secret>
-AZURE_KEYVAULT_URL=https://kv-hzb-c2-config.vault.azure.net/
+AZURE_KEYVAULT_URL=https://keyvault_name.vault.azure.net/
 ```
 
 Start app:
@@ -164,7 +164,6 @@ Check resolved config quickly:
 
 ```bash
 # PowerShell
-Invoke-WebRequest -UseBasicParsing http://localhost:5000/api/config | Select-Object -ExpandProperty Content
 ```
 
 ## 7) Troubleshooting

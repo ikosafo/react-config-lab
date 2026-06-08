@@ -158,6 +158,48 @@ jobs:
             az account set --subscription "$AZURE_SUBSCRIPTION_ID"
           fi
 
+      - name: Configuration drift detection (warn-only)
+        shell: bash
+        env:
+          KEY_VAULT_NAME: ${{ secrets.AZURE_KEYVAULT_NAME || env.DEFAULT_KEY_VAULT_NAME }}
+        run: |
+          set -euo pipefail
+
+          if ! command -v az >/dev/null 2>&1; then
+            echo "az CLI not available; skipping drift detection."
+            exit 0
+          fi
+
+          
+
+          echo "Listing Key Vault secrets from $KEY_VAULT_NAME..."
+          az keyvault secret list --vault-name "$KEY_VAULT_NAME" --query "[].name" -o tsv | sort > /tmp/kv_keys.txt || true
+
+          echo "Reading keys from $CONFIG_FILE..."
+          jq -r 'keys[]' "$CONFIG_FILE" | sort > /tmp/local_keys.txt || true
+
+          missing_in_kv=$(comm -23 /tmp/local_keys.txt /tmp/kv_keys.txt || true)
+          missing_in_cfg=$(comm -13 /tmp/local_keys.txt /tmp/kv_keys.txt || true)
+          common=$(comm -12 /tmp/local_keys.txt /tmp/kv_keys.txt || true)
+
+          echo "=== Drift report ==="
+          echo "Keys in config but missing from Key Vault:"
+          if [ -z "$missing_in_kv" ]; then echo "  (none)"; else echo "$missing_in_kv"; fi
+
+          echo "Keys in Key Vault but missing from config:"
+          if [ -z "$missing_in_cfg" ]; then echo "  (none)"; else echo "$missing_in_cfg"; fi
+
+          echo "Keys present in both:"
+          if [ -z "$common" ]; then echo "  (none)"; else echo "$common"; fi
+
+          if [ -n "$missing_in_kv" ] || [ -n "$missing_in_cfg" ]; then
+            echo "WARNING: configuration drift detected (non-fatal)."
+          else
+            echo "OK: no drift detected."
+          fi
+
+          exit 0
+
       - name: Verify target Key Vault is reachable
         shell: bash
         env:
