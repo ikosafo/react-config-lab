@@ -94,6 +94,40 @@ jobs:
 
           printf 'OK: All required keys found in %s\n' "$CONFIG_FILE"
 
+      - name: Validate config values
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          empty_keys=()
+          invalid_url_keys=()
+
+          while IFS=$'\t' read -r key value; do
+            if [ -z "$value" ]; then
+              empty_keys+=("$key")
+            fi
+
+            if printf '%s' "$key" | grep -qi 'url'; then
+              if [ -n "$value" ] && [[ "$value" != https://* ]]; then
+                invalid_url_keys+=("$key=$value")
+              fi
+            fi
+          done < <(jq -r 'to_entries[] | [.key, (if .value == null then "" elif (.value | type) == "string" then .value else (.value | tostring) end)] | @tsv' "$CONFIG_FILE")
+
+          if [ "${#empty_keys[@]}" -ne 0 ]; then
+            printf 'ERROR: Empty values found in %s:\n' "$CONFIG_FILE"
+            printf '  - %s\n' "${empty_keys[@]}"
+            exit 1
+          fi
+
+          if [ "${#invalid_url_keys[@]}" -ne 0 ]; then
+            printf 'ERROR: URL keys must start with https:// in %s:\n' "$CONFIG_FILE"
+            printf '  - %s\n' "${invalid_url_keys[@]}"
+            exit 1
+          fi
+
+          printf 'OK: No empty values or invalid URL values found in %s\n' "$CONFIG_FILE"
+
   # Deployment job: only runs on push (not on PR)
   deploy-to-keyvault:
     name: Deploy Secrets To Azure Key Vault
@@ -161,7 +195,7 @@ jobs:
       - name: Configuration drift detection (warn-only)
         shell: bash
         env:
-          KEY_VAULT_NAME: ${{ secrets.AZURE_KEYVAULT_NAME || env.DEFAULT_KEY_VAULT_NAME }}
+          KEY_VAULT_NAME: ${{ secrets.AZURE_KEYVAULT_NAME }}
         run: |
           set -euo pipefail
 
@@ -170,13 +204,19 @@ jobs:
             exit 0
           fi
 
-          
+          if [ -z "${KEY_VAULT_NAME:-}" ]; then
+            KEY_VAULT_NAME="$DEFAULT_KEY_VAULT_NAME"
+            echo "AZURE_KEYVAULT_NAME not set; defaulting to $KEY_VAULT_NAME"
+          fi
 
           echo "Listing Key Vault secrets from $KEY_VAULT_NAME..."
-          az keyvault secret list --vault-name "$KEY_VAULT_NAME" --query "[].name" -o tsv | sort > /tmp/kv_keys.txt || true
+          if ! az keyvault secret list --vault-name "$KEY_VAULT_NAME" --query "[].name" -o tsv | sort > /tmp/kv_keys.txt; then
+            echo "WARNING: unable to list secrets from Key Vault; skipping drift comparison."
+            exit 0
+          fi
 
           echo "Reading keys from $CONFIG_FILE..."
-          jq -r 'keys[]' "$CONFIG_FILE" | sort > /tmp/local_keys.txt || true
+          jq -r 'keys[]' "$CONFIG_FILE" | sort > /tmp/local_keys.txt
 
           missing_in_kv=$(comm -23 /tmp/local_keys.txt /tmp/kv_keys.txt || true)
           missing_in_cfg=$(comm -13 /tmp/local_keys.txt /tmp/kv_keys.txt || true)
