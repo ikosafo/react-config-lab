@@ -41,7 +41,7 @@ Three environment files been created
   REACT_APP_APP_NAME=[value]
   REACT_APP_LOG_LEVEL=[value]
   REACT_APP_ENABLE_ANALYTICS=[value]
-    ```
+  ```
 
 ### 2. `.env.development` (Team Defaults)
 - **Used by:** `npm start` (development mode)
