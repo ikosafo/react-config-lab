@@ -1,0 +1,185 @@
+{\rtf1\ansi\deff0
+{\fonttbl{\f0 Aptos;}{\f1 Consolas;}}
+{\colortbl;\red31\green78\blue121;\red71\green85\blue105;\red51\green65\blue85;\red31\green41\blue55;}
+\paperw12240\paperh15840\margl900\margr900\margt900\margb900
+\pard\qc\b\fs36\cf1 Sprint 3: Automation of Configuration Deployment\b0\cf0\fs22\par
+\pard\qc\fs24\cf2 Presentation and Testing Evidence Document\cf0\fs22\par
+\pard\qc\fs24\cf2 Project: React Config Lab\cf0\fs22\par
+\pard\qc\fs24\cf2 Target Azure Key Vault: kv-hzb-c2-config\cf0\fs22\par
+\pard\sa100\fs22 \par
+\pard\pagebb\sa120
+\pard\b\fs28\cf1 Purpose\b0\cf0\fs22\par
+\pard\sa100\fs22 This document explains how Sprint 3 was implemented and how each task can be tested. It is written for presentation use, so each section states the goal, the simple reason behind it, the test steps, and the expected result.\par
+\pard\pagebb\sa120
+\pard\b\fs28\cf1 Executive Summary\b0\cf0\fs22\par
+\pard\li360\sa80\fs22 - A GitHub Actions workflow deploys configuration to Azure Key Vault on approved push events.\par
+\pard\li360\sa80\fs22 - Pull requests run validation only and do not deploy secrets.\par
+\pard\li360\sa80\fs22 - Dummy configuration is used for safe pull request testing.\par
+\pard\li360\sa80\fs22 - JSON validation prevents invalid or incomplete configuration from being deployed.\par
+\pard\li360\sa80\fs22 - Azure CLI commands and a helper script verify stored secrets and versions.\par
+\pard\pagebb\sa120
+\pard\b\fs28\cf1 Implementation Evidence\b0\cf0\fs22\par
+\pard\sa100
+\trowd\trgaph108\cellx3000\cellx6000\cellx9000
+\intbl\b\cf1 Area\b0\cf0\cell \intbl\b\cf1 Status\b0\cf0\cell \intbl\b\cf1 Evidence\b0\cf0\cell \row
+\trowd\trgaph108\cellx3000\cellx6000\cellx9000
+\intbl Workflow file\cell \intbl Done\cell \intbl .github/workflows/deploy-config.yml\cell \row
+\trowd\trgaph108\cellx3000\cellx6000\cellx9000
+\intbl Push branches\cell \intbl Done\cell \intbl rachel-branch, main, develop\cell \row
+\trowd\trgaph108\cellx3000\cellx6000\cellx9000
+\intbl Pull request validation\cell \intbl Done\cell \intbl pull_request trigger configured\cell \row
+\trowd\trgaph108\cellx3000\cellx6000\cellx9000
+\intbl Checkout repository\cell \intbl Done\cell \intbl actions/checkout@v4\cell \row
+\trowd\trgaph108\cellx3000\cellx6000\cellx9000
+\intbl Install jq\cell \intbl Done\cell \intbl sudo apt-get install -y jq\cell \row
+\trowd\trgaph108\cellx3000\cellx6000\cellx9000
+\intbl Azure login\cell \intbl Done\cell \intbl az login --service-principal\cell \row
+\trowd\trgaph108\cellx3000\cellx6000\cellx9000
+\intbl PR safety\cell \intbl Done\cell \intbl Azure login and deploy run only on push\cell \row
+\trowd\trgaph108\cellx3000\cellx6000\cellx9000
+\intbl Real config\cell \intbl Done\cell \intbl config/secrets.json\cell \row
+\trowd\trgaph108\cellx3000\cellx6000\cellx9000
+\intbl Dummy config\cell \intbl Done\cell \intbl config/test-secrets.json\cell \row
+\trowd\trgaph108\cellx3000\cellx6000\cellx9000
+\intbl JSON validation\cell \intbl Done\cell \intbl jq syntax and required-key checks\cell \row
+\trowd\trgaph108\cellx3000\cellx6000\cellx9000
+\intbl Key Vault upload\cell \intbl Done\cell \intbl az keyvault secret set\cell \row
+\trowd\trgaph108\cellx3000\cellx6000\cellx9000
+\intbl Verification\cell \intbl Done\cell \intbl az keyvault secret list and helper script\cell \row
+\pard\sa160\par
+\pard\pagebb\sa120
+\pard\b\fs28\cf1 Task 1: GitHub Actions Workflow for Config Deployment\b0\cf0\fs22\par
+\pard\sb140\b\fs24\cf3 Goal\b0\cf0\fs22\par
+\pard\sa100\fs22 Automatically upload configuration values to Azure Key Vault when code is pushed to an approved branch.\par
+\pard\sb140\b\fs24\cf3 Simple rationale\b0\cf0\fs22\par
+\pard\sa100\fs22 Instead of manually copying secrets into Azure, the workflow does it the same way every time. This reduces mistakes and makes deployment repeatable.\par
+\pard\sb140\b\fs24\cf3 How to test\b0\cf0\fs22\par
+\pard\li360\sa80\f1\fs19\cf4 git add .\f0\cf0\fs22\par
+\pard\li360\sa80\f1\fs19\cf4 git commit -m "test config deployment workflow"\f0\cf0\fs22\par
+\pard\li360\sa80\f1\fs19\cf4 git push origin rachel-branch\f0\cf0\fs22\par
+\pard\sb140\b\fs24\cf3 Expected result\b0\cf0\fs22\par
+\pard\li360\sa80\fs22 - GitHub Actions starts the workflow automatically.\par
+\pard\li360\sa80\fs22 - The run includes checkout, jq install, Azure login, JSON validation, deployment, and verification steps.\par
+\pard\li360\sa80\fs22 - Azure Key Vault contains secrets such as API-BASE-URL, APP-ENV, and SAMPLE-KEY.\par
+\pard\pagebb\sa120
+\pard\b\fs28\cf1 Task 2: Debug and Stabilize the Workflow\b0\cf0\fs22\par
+\pard\sb140\b\fs24\cf3 Goal\b0\cf0\fs22\par
+\pard\sa100\fs22 Make workflow failures clear and make successful runs easy to understand.\par
+\pard\sb140\b\fs24\cf3 Simple rationale\b0\cf0\fs22\par
+\pard\sa100\fs22 When a pipeline fails, the logs should quickly show what happened. Clear messages save time during debugging.\par
+\pard\sb140\b\fs24\cf3 How to test\b0\cf0\fs22\par
+\pard\li360\sa80\fs22 - Push a small change to rachel-branch, main, or develop.\par
+\pard\li360\sa80\fs22 - Open GitHub Actions and inspect the latest workflow run.\par
+\pard\li360\sa80\fs22 - Check the debug step for branch and event type.\par
+\pard\sb140\b\fs24\cf3 Expected result\b0\cf0\fs22\par
+\pard\li360\sa80\fs22 - Branch: rachel-branch\par
+\pard\li360\sa80\fs22 - Event: push\par
+\pard\li360\sa80\fs22 - PR runs skip Azure login, deployment, and Key Vault verification.\par
+\pard\pagebb\sa120
+\pard\b\fs28\cf1 Task 3: Pipeline Validation with Dummy Configuration\b0\cf0\fs22\par
+\pard\sb140\b\fs24\cf3 Goal\b0\cf0\fs22\par
+\pard\sa100\fs22 Allow safe pull request testing without using or deploying real secrets.\par
+\pard\sb140\b\fs24\cf3 Simple rationale\b0\cf0\fs22\par
+\pard\sa100\fs22 A pull request is a review stage. It should prove the pipeline works, but it should not change production-like secrets.\par
+\pard\sb140\b\fs24\cf3 How to test\b0\cf0\fs22\par
+\pard\li360\sa80\f1\fs19\cf4 git checkout -b feature/config-test\f0\cf0\fs22\par
+\pard\li360\sa80\f1\fs19\cf4 git add config/test-secrets.json\f0\cf0\fs22\par
+\pard\li360\sa80\f1\fs19\cf4 git commit -m "test pull request dummy config"\f0\cf0\fs22\par
+\pard\li360\sa80\f1\fs19\cf4 git push -u origin feature/config-test\f0\cf0\fs22\par
+\pard\li360\sa80\fs22 - Create a pull request into rachel-branch, main, or develop.\par
+\pard\sb140\b\fs24\cf3 Expected result\b0\cf0\fs22\par
+\pard\li360\sa80\fs22 - Event: pull_request\par
+\pard\li360\sa80\fs22 - Validating test config: config/test-secrets.json\par
+\pard\li360\sa80\fs22 - No real secrets are deployed during the pull request run.\par
+\pard\pagebb\sa120
+\pard\b\fs28\cf1 Task 4: JSON Configuration Validation\b0\cf0\fs22\par
+\pard\sb140\b\fs24\cf3 Goal\b0\cf0\fs22\par
+\pard\sa100\fs22 Stop invalid or incomplete JSON files before deployment.\par
+\pard\sb140\b\fs24\cf3 Simple rationale\b0\cf0\fs22\par
+\pard\sa100\fs22 If the config file is broken, the safest behavior is to fail early before Azure Key Vault is changed.\par
+\pard\sb140\b\fs24\cf3 How to test\b0\cf0\fs22\par
+\pard\li360\sa80\fs22 - Run a local JSON parse check.\par
+\pard\li360\sa80\fs22 - On a test branch, temporarily add a trailing comma to config/test-secrets.json and open a pull request.\par
+\pard\li360\sa80\fs22 - Then remove a required key such as SAMPLE_KEY and confirm the workflow fails again.\par
+\pard\sb140\b\fs24\cf3 Expected result\b0\cf0\fs22\par
+\pard\li360\sa80\fs22 - Invalid JSON fails in the Validate JSON config step.\par
+\pard\li360\sa80\fs22 - Missing API_BASE_URL, APP_ENV, or SAMPLE_KEY also fails validation.\par
+\pard\li360\sa80\fs22 - Fix the file before merging.\par
+\pard\pagebb\sa120
+\pard\b\fs28\cf1 Task 5: Simulate Pull Request and Full Pipeline Execution\b0\cf0\fs22\par
+\pard\sb140\b\fs24\cf3 Goal\b0\cf0\fs22\par
+\pard\sa100\fs22 Prove the full workflow from feature branch to pull request validation to deployment after merge.\par
+\pard\sb140\b\fs24\cf3 Simple rationale\b0\cf0\fs22\par
+\pard\sa100\fs22 This shows the normal team workflow: validate safely before merge, then deploy real configuration only after accepted code reaches an approved branch.\par
+\pard\sb140\b\fs24\cf3 How to test\b0\cf0\fs22\par
+\pard\li360\sa80\fs22 - Create a feature branch and make a small config change.\par
+\pard\li360\sa80\fs22 - Push the branch and open a pull request.\par
+\pard\li360\sa80\fs22 - Confirm the PR validates test-secrets.json and skips deployment.\par
+\pard\li360\sa80\fs22 - Merge the PR.\par
+\pard\li360\sa80\fs22 - Confirm the post-merge push run deploys secrets from secrets.json.\par
+\pard\sb140\b\fs24\cf3 Expected result\b0\cf0\fs22\par
+\pard\li360\sa80\fs22 - Before merge: validation only.\par
+\pard\li360\sa80\fs22 - After merge: Azure login, deployment, and Key Vault verification run.\par
+\pard\pagebb\sa120
+\pard\b\fs28\cf1 Task 6: Verify and Manage Secrets with Azure CLI\b0\cf0\fs22\par
+\pard\sb140\b\fs24\cf3 Goal\b0\cf0\fs22\par
+\pard\sa100\fs22 Confirm secrets exist in Azure Key Vault and check their versions from the command line.\par
+\pard\sb140\b\fs24\cf3 Simple rationale\b0\cf0\fs22\par
+\pard\sa100\fs22 The Azure CLI gives direct proof that the deployment worked, without relying only on GitHub logs or the Azure Portal.\par
+\pard\sb140\b\fs24\cf3 How to test\b0\cf0\fs22\par
+\pard\li360\sa80\f1\fs19\cf4 az keyvault secret list --vault-name kv-hzb-c2-config --output table\f0\cf0\fs22\par
+\pard\li360\sa80\f1\fs19\cf4 az keyvault secret show --name API-BASE-URL --vault-name kv-hzb-c2-config --query value\f0\cf0\fs22\par
+\pard\li360\sa80\f1\fs19\cf4 az keyvault secret list-versions --name API-BASE-URL --vault-name kv-hzb-c2-config --output table\f0\cf0\fs22\par
+\pard\sb140\b\fs24\cf3 Expected result\b0\cf0\fs22\par
+\pard\li360\sa80\fs22 - The secret list includes values uploaded from config/secrets.json.\par
+\pard\li360\sa80\fs22 - The displayed secret value matches the config file.\par
+\pard\li360\sa80\fs22 - Repeated deployments create multiple versions.\par
+\pard\pagebb\sa120
+\pard\b\fs28\cf1 Presentation Talking Points\b0\cf0\fs22\par
+\pard\sa100
+\trowd\trgaph108\cellx3000\cellx6000
+\intbl\b\cf1 Question\b0\cf0\cell \intbl\b\cf1 Simple answer\b0\cf0\cell \row
+\trowd\trgaph108\cellx3000\cellx6000
+\intbl Why GitHub Actions?\cell \intbl It automates deployment so the process is consistent.\cell \row
+\trowd\trgaph108\cellx3000\cellx6000
+\intbl Why dummy config?\cell \intbl It lets PRs test the pipeline safely without deploying real values.\cell \row
+\trowd\trgaph108\cellx3000\cellx6000
+\intbl Why JSON validation?\cell \intbl It blocks broken config before Azure is changed.\cell \row
+\trowd\trgaph108\cellx3000\cellx6000
+\intbl Why push-only deployment?\cell \intbl Only accepted code on approved branches should update Key Vault.\cell \row
+\trowd\trgaph108\cellx3000\cellx6000
+\intbl Why Azure CLI verification?\cell \intbl It proves the result directly from Azure Key Vault.\cell \row
+\pard\sa160\par
+\pard\pagebb\sa120
+\pard\b\fs28\cf1 Final Acceptance Checklist\b0\cf0\fs22\par
+\pard\sa100
+\trowd\trgaph108\cellx3000\cellx6000
+\intbl\b\cf1 Check\b0\cf0\cell \intbl\b\cf1 Pass condition\b0\cf0\cell \row
+\trowd\trgaph108\cellx3000\cellx6000
+\intbl Workflow exists\cell \intbl .github/workflows/deploy-config.yml is present\cell \row
+\trowd\trgaph108\cellx3000\cellx6000
+\intbl Push trigger works\cell \intbl Push to rachel-branch, main, or develop starts deployment\cell \row
+\trowd\trgaph108\cellx3000\cellx6000
+\intbl PR trigger works\cell \intbl Opening a PR starts validation\cell \row
+\trowd\trgaph108\cellx3000\cellx6000
+\intbl PR uses dummy config\cell \intbl Logs show config/test-secrets.json\cell \row
+\trowd\trgaph108\cellx3000\cellx6000
+\intbl PR does not deploy\cell \intbl Azure login and deployment are skipped\cell \row
+\trowd\trgaph108\cellx3000\cellx6000
+\intbl Push uses real config\cell \intbl Logs show config/secrets.json\cell \row
+\trowd\trgaph108\cellx3000\cellx6000
+\intbl Validation works\cell \intbl Bad JSON or missing required keys fail the run\cell \row
+\trowd\trgaph108\cellx3000\cellx6000
+\intbl Azure login works\cell \intbl Service Principal authenticates successfully\cell \row
+\trowd\trgaph108\cellx3000\cellx6000
+\intbl Secrets deploy\cell \intbl Secrets appear in kv-hzb-c2-config\cell \row
+\trowd\trgaph108\cellx3000\cellx6000
+\intbl Versioning works\cell \intbl Azure CLI shows versions for updated secrets\cell \row
+\pard\sa160\par
+\pard\pagebb\sa120
+\pard\b\fs28\cf1 Local Verification Already Completed\b0\cf0\fs22\par
+\pard\li360\sa80\f1\fs19\cf4 Both JSON files are valid\f0\cf0\fs22\par
+\pard\li360\sa80\f1\fs19\cf4 Test Suites: 1 passed, 1 total\f0\cf0\fs22\par
+\pard\li360\sa80\f1\fs19\cf4 Tests: 1 passed, 1 total\f0\cf0\fs22\par
+\pard\sa100\fs22 Remaining real-world proof must be completed in GitHub Actions and Azure because it depends on repository secrets, workflow events, and actual Key Vault access.\par
+}
