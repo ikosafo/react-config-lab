@@ -26,10 +26,10 @@ on:
 jobs:
   deploy-secrets:
     runs-on: ubuntu-latest
-    permissions:
-      contents: write   # needed so the bot can push CONFIG_REPORT.md back
     env:
       FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+    permissions:
+      contents: write   # needed so the bot can push CONFIG_REPORT.md back
 
     steps:
 

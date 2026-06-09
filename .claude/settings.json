@@ -1,0 +1,7 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git -C \"c:\\\\Users\\\\Rachel\\\\Desktop\\\\Free_Lancing\\\\react-config-lab\" branch --show-current)"
+    ]
+  }
+}
