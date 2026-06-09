@@ -22,7 +22,7 @@ on:
         type: boolean
 
 permissions:
-  contents: read
+  contents: write
 
 # Shared/global environment variables used in both jobs
 env:
@@ -39,6 +39,8 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Print workflow context
         shell: bash
@@ -295,3 +297,64 @@ jobs:
 
             echo "Uploaded secret: $key"
           done < <(jq -r 'keys[]' "$CONFIG_FILE")
+
+      - name: Generate CONFIG_REPORT.md
+        if: env.DRY_RUN != 'true'
+        shell: bash
+        env:
+          KEY_VAULT_NAME: ${{ secrets.AZURE_KEYVAULT_NAME }}
+        run: |
+          set -euo pipefail
+
+          if [ -z "${KEY_VAULT_NAME:-}" ]; then
+            KEY_VAULT_NAME="$DEFAULT_KEY_VAULT_NAME"
+            echo "AZURE_KEYVAULT_NAME not set; defaulting to $KEY_VAULT_NAME"
+          fi
+
+          report_file="CONFIG_REPORT.md"
+          generation_timestamp=$(date -u +"%Y-%m-%d %H:%M:%S UTC")
+
+          {
+            echo "# Configuration Deployment Report"
+            echo
+            echo "- Generated: $generation_timestamp"
+            echo "- Branch: ${{ github.ref_name }}"
+            echo "- Trigger: ${{ github.event_name }}"
+            echo "- Key Vault: $KEY_VAULT_NAME"
+            echo
+            echo "| Secret Name | Last Updated (UTC) | Version ID |"
+            echo "| --- | --- | --- |"
+          } > "$report_file"
+
+          while IFS= read -r secret_name; do
+            secret_info=$(az keyvault secret show \
+              --vault-name "$KEY_VAULT_NAME" \
+              --name "$secret_name" \
+              --query '{name:name, updated:attributes.updated, version:id}' \
+              -o json)
+
+            updated_at=$(printf '%s' "$secret_info" | jq -r '.updated // "unknown"')
+            version_id=$(printf '%s' "$secret_info" | jq -r '.version // "unknown"')
+            version_id=${version_id##*/}
+
+            printf '| %s | %s | %s |\n' "$secret_name" "$updated_at" "$version_id" >> "$report_file"
+          done < <(az keyvault secret list --vault-name "$KEY_VAULT_NAME" --query '[].name' -o tsv | sort)
+
+          echo "Generated $report_file"
+
+      - name: Commit CONFIG_REPORT.md back to repository
+        if: env.DRY_RUN != 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          if [ -z "$(git status --porcelain -- CONFIG_REPORT.md)" ]; then
+            echo "CONFIG_REPORT.md is unchanged; nothing to commit."
+            exit 0
+          fi
+
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add CONFIG_REPORT.md
+          git commit -m "docs: update CONFIG_REPORT.md [skip ci]"
+          git push origin HEAD:${{ github.ref_name }}
