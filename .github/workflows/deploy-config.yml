@@ -13,9 +13,16 @@ on:
     branches:
       - Florence-branch
       - develop
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: Preview uploads without changing Azure Key Vault
+        required: false
+        default: false
+        type: boolean
 
 permissions:
-  contents: read
+  contents: write
 
 # Shared/global environment variables used in both jobs
 env:
@@ -32,6 +39,8 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Print workflow context
         shell: bash
@@ -94,12 +103,48 @@ jobs:
 
           printf 'OK: All required keys found in %s\n' "$CONFIG_FILE"
 
+      - name: Validate config values
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          empty_keys=()
+          invalid_url_keys=()
+
+          while IFS=$'\t' read -r key value; do
+            if [ -z "$value" ]; then
+              empty_keys+=("$key")
+            fi
+
+            if printf '%s' "$key" | grep -qi 'url'; then
+              if [ -n "$value" ] && [[ "$value" != https://* ]]; then
+                invalid_url_keys+=("$key=$value")
+              fi
+            fi
+          done < <(jq -r 'to_entries[] | [.key, (if .value == null then "" elif (.value | type) == "string" then .value else (.value | tostring) end)] | @tsv' "$CONFIG_FILE")
+
+          if [ "${#empty_keys[@]}" -ne 0 ]; then
+            printf 'ERROR: Empty values found in %s:\n' "$CONFIG_FILE"
+            printf '  - %s\n' "${empty_keys[@]}"
+            exit 1
+          fi
+
+          if [ "${#invalid_url_keys[@]}" -ne 0 ]; then
+            printf 'ERROR: URL keys must start with https:// in %s:\n' "$CONFIG_FILE"
+            printf '  - %s\n' "${invalid_url_keys[@]}"
+            exit 1
+          fi
+
+          printf 'OK: No empty values or invalid URL values found in %s\n' "$CONFIG_FILE"
+
   # Deployment job: only runs on push (not on PR)
   deploy-to-keyvault:
     name: Deploy Secrets To Azure Key Vault
-    if: github.event_name == 'push'
+    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     needs: validate-config
+    env:
+      DRY_RUN: ${{ github.event_name == 'workflow_dispatch' && inputs.dry_run || false }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -111,6 +156,7 @@ jobs:
           echo "Event: ${{ github.event_name }}"
           echo "Branch: ${{ github.ref_name }}"
           echo "Config file: $CONFIG_FILE"
+          echo "Dry run: $DRY_RUN"
 
       - name: Validate Azure secrets are configured
         shell: bash
@@ -161,7 +207,7 @@ jobs:
       - name: Configuration drift detection (warn-only)
         shell: bash
         env:
-          KEY_VAULT_NAME: ${{ secrets.AZURE_KEYVAULT_NAME || env.DEFAULT_KEY_VAULT_NAME }}
+          KEY_VAULT_NAME: ${{ secrets.AZURE_KEYVAULT_NAME }}
         run: |
           set -euo pipefail
 
@@ -170,13 +216,19 @@ jobs:
             exit 0
           fi
 
-          
+          if [ -z "${KEY_VAULT_NAME:-}" ]; then
+            KEY_VAULT_NAME="$DEFAULT_KEY_VAULT_NAME"
+            echo "AZURE_KEYVAULT_NAME not set; defaulting to $KEY_VAULT_NAME"
+          fi
 
           echo "Listing Key Vault secrets from $KEY_VAULT_NAME..."
-          az keyvault secret list --vault-name "$KEY_VAULT_NAME" --query "[].name" -o tsv | sort > /tmp/kv_keys.txt || true
+          if ! az keyvault secret list --vault-name "$KEY_VAULT_NAME" --query "[].name" -o tsv | sort > /tmp/kv_keys.txt; then
+            echo "WARNING: unable to list secrets from Key Vault; skipping drift comparison."
+            exit 0
+          fi
 
           echo "Reading keys from $CONFIG_FILE..."
-          jq -r 'keys[]' "$CONFIG_FILE" | sort > /tmp/local_keys.txt || true
+          jq -r 'keys[]' "$CONFIG_FILE" | sort > /tmp/local_keys.txt
 
           missing_in_kv=$(comm -23 /tmp/local_keys.txt /tmp/kv_keys.txt || true)
           missing_in_cfg=$(comm -13 /tmp/local_keys.txt /tmp/kv_keys.txt || true)
@@ -233,6 +285,11 @@ jobs:
               continue
             fi
 
+            if [ "${DRY_RUN:-false}" = "true" ]; then
+              echo "DRY-RUN: would upload secret: $key"
+              continue
+            fi
+
             az keyvault secret set \
               --vault-name "$KEY_VAULT_NAME" \
               --name "$key" \
@@ -240,3 +297,64 @@ jobs:
 
             echo "Uploaded secret: $key"
           done < <(jq -r 'keys[]' "$CONFIG_FILE")
+
+      - name: Generate CONFIG_REPORT.md
+        if: env.DRY_RUN != 'true'
+        shell: bash
+        env:
+          KEY_VAULT_NAME: ${{ secrets.AZURE_KEYVAULT_NAME }}
+        run: |
+          set -euo pipefail
+
+          if [ -z "${KEY_VAULT_NAME:-}" ]; then
+            KEY_VAULT_NAME="$DEFAULT_KEY_VAULT_NAME"
+            echo "AZURE_KEYVAULT_NAME not set; defaulting to $KEY_VAULT_NAME"
+          fi
+
+          report_file="CONFIG_REPORT.md"
+          generation_timestamp=$(date -u +"%Y-%m-%d %H:%M:%S UTC")
+
+          {
+            echo "# Configuration Deployment Report"
+            echo
+            echo "- Generated: $generation_timestamp"
+            echo "- Branch: ${{ github.ref_name }}"
+            echo "- Trigger: ${{ github.event_name }}"
+            echo "- Key Vault: $KEY_VAULT_NAME"
+            echo
+            echo "| Secret Name | Last Updated (UTC) | Version ID |"
+            echo "| --- | --- | --- |"
+          } > "$report_file"
+
+          while IFS= read -r secret_name; do
+            secret_info=$(az keyvault secret show \
+              --vault-name "$KEY_VAULT_NAME" \
+              --name "$secret_name" \
+              --query '{name:name, updated:attributes.updated, version:id}' \
+              -o json)
+
+            updated_at=$(printf '%s' "$secret_info" | jq -r '.updated // "unknown"')
+            version_id=$(printf '%s' "$secret_info" | jq -r '.version // "unknown"')
+            version_id=${version_id##*/}
+
+            printf '| %s | %s | %s |\n' "$secret_name" "$updated_at" "$version_id" >> "$report_file"
+          done < <(az keyvault secret list --vault-name "$KEY_VAULT_NAME" --query '[].name' -o tsv | sort)
+
+          echo "Generated $report_file"
+
+      - name: Commit CONFIG_REPORT.md back to repository
+        if: env.DRY_RUN != 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          if [ -z "$(git status --porcelain -- CONFIG_REPORT.md)" ]; then
+            echo "CONFIG_REPORT.md is unchanged; nothing to commit."
+            exit 0
+          fi
+
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add CONFIG_REPORT.md
+          git commit -m "docs: update CONFIG_REPORT.md [skip ci]"
+          git push origin HEAD:${{ github.ref_name }}
