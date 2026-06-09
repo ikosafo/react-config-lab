@@ -38,14 +38,16 @@ The library is designed to work with Azure Identity credentials, so authenticati
 Together, these libraries let the project authenticate to Azure and access secrets stored in Azure Key Vault, enabling secure configuration management and secret retrieval.
 
 ## listing all secretes in the key vault run 
-`az.cmd keyvault secret list --vault-name "kv-hzb-c2-config" --output table` 
+`az.cmd keyvault secret list --vault-name "name" --output table` 
 
-##TASK 5
+## Task 5
 # Match REACT_APP_ENV
-az.cmd keyvault secret set --vault-name "kv-hzb-c2-config" --name "react-app-env" --value "development"
+az.cmd keyvault secret set --vault-name "name" --name "react-app-env" --value "value"
 
 # Match REACT_APP_API_URL
-az.cmd keyvault secret set --vault-name "kv-hzb-c2-config" --name "react-app-api-url" --value "http://localhost:3001/api"
+az.cmd keyvault secret set --vault-name "name" --name "react-app-api-url" --value "value"
 
 # Match REACT_APP_APP_NAME
-az.cmd keyvault secret set --vault-name "kv-hzb-c2-config" --name "react-app-app-name" --value "React Config Lab"
+az.cmd keyvault secret set --vault-name "name" --name "react-app-app-name" --value "value"
+
+# Replace "name" and "value" with the name of your Key Vault and the value of the secret respectively.
