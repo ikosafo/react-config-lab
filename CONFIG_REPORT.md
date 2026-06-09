@@ -1,0 +1,24 @@
+# Configuration Deployment Report
+
+- Generated: 2026-06-09 00:06:09 UTC
+- Branch: Florence-branch
+- Trigger: push
+- Key Vault: kv-hzb-c2-config
+
+| Secret Name | Last Updated (UTC) | Version ID |
+| --- | --- | --- |
+| API-BASE-URL | 2026-06-02T12:55:20+00:00 | cda262b24729475382eaa3079e83e1ad |
+| APP-ENV | 2026-06-02T12:55:21+00:00 | 14dfb7f1feea4e17bfa64d136a24b880 |
+| Fafa | 2026-06-09T00:06:03+00:00 | 8ba3738e04c9411585451eaa1bc3b1a7 |
+| REACT-APP-APPNAME | 2026-05-25T21:11:22+00:00 | d4f589b109764c93b00955d4135bbde8 |
+| REACT-APP-ENABLE-ANALYTICS | 2026-06-09T00:06:04+00:00 | 205b6488d1514fecbd8338ab400d3128 |
+| REACT-APP-ENV | 2026-06-02T12:55:24+00:00 | b59b4e3f7ad949b3b57e19fceb3b967d |
+| REACT-APP-LOGLEVEL | 2026-05-25T21:11:25+00:00 | 697161cd7bfe4e7687100590500b31d9 |
+| SAMPLE-KEY | 2026-06-02T12:55:23+00:00 | 8b1c96d817204825a8d45457a21e30b9 |
+| SONIA | 2026-05-26T11:57:07+00:00 | 7ad5c74af7c943d6a2ebd339d0d1520a |
+| TEST | 2026-04-18T00:33:00+00:00 | 0cf267a058404ada8f1e0773ba92b131 |
+| environment | 2026-06-09T00:06:05+00:00 | f601a0dd5a0246dd89e83faa2b35b68a |
+| log-level | 2026-04-21T10:19:42+00:00 | c7d065480e914831a7950dd8ccc394a2 |
+| react-app-api-url | 2026-06-09T00:06:07+00:00 | 3bfd1d34ff2a4405b7e5894f0f94d54d |
+| react-app-app-name | 2026-06-09T00:06:08+00:00 | 1b4473713fe4483caed5ab13f29ae491 |
+| react-app-log-level | 2026-06-09T00:06:09+00:00 | 61b3bdf12cac4b9a83fc1adff504e838 |
