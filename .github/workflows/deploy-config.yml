@@ -342,7 +342,7 @@ jobs:
 
           echo "Generated $report_file"
 
-      - name: Commit CONFIG_REPORT.md back to repository
+      - name: Commit CONFIG_REPORT.md to repo
         if: env.DRY_RUN != 'true'
         shell: bash
         run: |
