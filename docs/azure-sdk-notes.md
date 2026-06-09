@@ -40,7 +40,7 @@ Together, these libraries let the project authenticate to Azure and access secre
 ## listing all secretes in the key vault run 
 `az.cmd keyvault secret list --vault-name "name" --output table` 
 
-##TASK 5
+## Task 5
 # Match REACT_APP_ENV
 az.cmd keyvault secret set --vault-name "name" --name "react-app-env" --value "value"
 
