@@ -95,11 +95,11 @@ This guide helps you understand the config quickly and make your own local setti
 Example `.env.local`:
 
 ```env
-REACT_APP_ENV=development
-REACT_APP_API_URL=http://localhost:5000
-REACT_APP_APP_NAME=React Config Lab (Local)
-REACT_APP_LOG_LEVEL=debug
-REACT_APP_ENABLE_ANALYTICS=false
+REACT_APP_ENV=[value]
+REACT_APP_API_URL=[value]
+REACT_APP_APP_NAME=[value]
+REACT_APP_LOG_LEVEL=[value]
+REACT_APP_ENABLE_ANALYTICS=[value]
 ```
 
 ### Quick way to see the current config in dev
@@ -111,3 +111,10 @@ If required variables are missing, the app shows a browser-visible configuration
 ### One important tip
 
 Do not commit real secrets or private values to git. Use `.env.local` for local overrides, and keep `.env.example` as a safe template that others can copy.
+
+
+
+
+
+
+
