@@ -50,4 +50,4 @@ az.cmd keyvault secret set --vault-name "name" --name "react-app-api-url" --valu
 # Match REACT_APP_APP_NAME
 az.cmd keyvault secret set --vault-name "name" --name "react-app-app-name" --value "value"
 
-# replace "name" and "value with the name of your keyvault and value of the secrete respectively
+# Replace "name" and "value" with the name of your Key Vault and the value of the secret respectively.
